@@ -1371,7 +1371,7 @@ GDScriptCodeGenerator::Address GDScriptCompiler::_parse_expression(CodeGen &code
 				return GDScriptCodeGenerator::Address();
 			}
 
-			main_script->lambda_info.insert(function, { lambda->captures.size(), lambda->use_self });
+			main_script->lambda_info.insert(function, { (int)lambda->captures.size(), lambda->use_self });
 			gen->write_lambda(result, function, captures, lambda->use_self);
 
 			for (int i = 0; i < captures.size(); i++) {
