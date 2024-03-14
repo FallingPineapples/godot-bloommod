@@ -4170,7 +4170,7 @@ void TileSetAtlasSource::create_tile(const Vector2i p_atlas_coords, const Vector
 	_create_coords_mapping_cache(p_atlas_coords);
 	_queue_update_padded_texture();
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 void TileSetAtlasSource::remove_tile(Vector2i p_atlas_coords) {
@@ -4191,7 +4191,7 @@ void TileSetAtlasSource::remove_tile(Vector2i p_atlas_coords) {
 
 	_queue_update_padded_texture();
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 bool TileSetAtlasSource::has_tile(Vector2i p_atlas_coords) const {
@@ -4221,7 +4221,7 @@ void TileSetAtlasSource::set_tile_animation_columns(const Vector2i p_atlas_coord
 	_create_coords_mapping_cache(p_atlas_coords);
 	_queue_update_padded_texture();
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 int TileSetAtlasSource::get_tile_animation_columns(const Vector2i p_atlas_coords) const {
@@ -4244,7 +4244,7 @@ void TileSetAtlasSource::set_tile_animation_separation(const Vector2i p_atlas_co
 	_create_coords_mapping_cache(p_atlas_coords);
 	_queue_update_padded_texture();
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 Vector2i TileSetAtlasSource::get_tile_animation_separation(const Vector2i p_atlas_coords) const {
@@ -4258,7 +4258,7 @@ void TileSetAtlasSource::set_tile_animation_speed(const Vector2i p_atlas_coords,
 
 	tiles[p_atlas_coords].animation_speed = p_speed;
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 real_t TileSetAtlasSource::get_tile_animation_speed(const Vector2i p_atlas_coords) const {
@@ -4271,7 +4271,7 @@ void TileSetAtlasSource::set_tile_animation_mode(const Vector2i p_atlas_coords, 
 
 	tiles[p_atlas_coords].animation_mode = p_mode;
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 TileSetAtlasSource::TileAnimationMode TileSetAtlasSource::get_tile_animation_mode(const Vector2i p_atlas_coords) const {
@@ -4305,7 +4305,7 @@ void TileSetAtlasSource::set_tile_animation_frames_count(const Vector2i p_atlas_
 
 	notify_property_list_changed();
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 int TileSetAtlasSource::get_tile_animation_frames_count(const Vector2i p_atlas_coords) const {
@@ -4320,7 +4320,7 @@ void TileSetAtlasSource::set_tile_animation_frame_duration(const Vector2i p_atla
 
 	tiles[p_atlas_coords].animation_frames_durations[p_frame_index] = p_duration;
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 real_t TileSetAtlasSource::get_tile_animation_frame_duration(const Vector2i p_atlas_coords, int p_frame_index) const {
@@ -4530,7 +4530,7 @@ void TileSetAtlasSource::move_tile_in_atlas(Vector2i p_atlas_coords, Vector2i p_
 	_create_coords_mapping_cache(new_atlas_coords);
 	_queue_update_padded_texture();
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 int TileSetAtlasSource::create_alternative_tile(const Vector2i p_atlas_coords, int p_alternative_id_override) {
@@ -4548,7 +4548,7 @@ int TileSetAtlasSource::create_alternative_tile(const Vector2i p_atlas_coords, i
 	tiles[p_atlas_coords].alternatives_ids.sort();
 	_compute_next_alternative_id(p_atlas_coords);
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 
 	return new_alternative_id;
 }
@@ -4564,7 +4564,7 @@ void TileSetAtlasSource::remove_alternative_tile(const Vector2i p_atlas_coords, 
 	tiles[p_atlas_coords].alternatives_ids.erase(p_alternative_tile);
 	tiles[p_atlas_coords].alternatives_ids.sort();
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 void TileSetAtlasSource::set_alternative_tile_id(const Vector2i p_atlas_coords, int p_alternative_tile, int p_new_id) {
@@ -4582,7 +4582,7 @@ void TileSetAtlasSource::set_alternative_tile_id(const Vector2i p_atlas_coords, 
 	tiles[p_atlas_coords].alternatives_ids.erase(p_alternative_tile);
 	tiles[p_atlas_coords].alternatives_ids.sort();
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 bool TileSetAtlasSource::has_alternative_tile(const Vector2i p_atlas_coords, int p_alternative_tile) const {
@@ -4614,6 +4614,12 @@ TileData *TileSetAtlasSource::get_tile_data(const Vector2i p_atlas_coords, int p
 	ERR_FAIL_COND_V_MSG(!tiles[p_atlas_coords].alternatives.has(p_alternative_tile), nullptr, vformat("TileSetAtlasSource has no alternative with id %d for tile coords %s.", p_alternative_tile, String(p_atlas_coords)));
 
 	return tiles[p_atlas_coords].alternatives[p_alternative_tile];
+}
+
+void TileSetAtlasSource::_notification(int p_notification) {
+	if (p_notification == NOTIFICATION_POSTINITIALIZE) {
+		initializing = false;
+	}
 }
 
 void TileSetAtlasSource::_bind_methods() {
@@ -4759,6 +4765,9 @@ void TileSetAtlasSource::_create_coords_mapping_cache(Vector2i p_atlas_coords) {
 }
 
 void TileSetAtlasSource::_queue_update_padded_texture() {
+	if (padded_texture_needs_update) {
+		return;
+	}
 	padded_texture_needs_update = true;
 	call_deferred(SNAME("_update_padded_texture"));
 }
@@ -4867,12 +4876,24 @@ void TileSetAtlasSource::_update_padded_texture() {
 	emit_changed();
 }
 
+void TileSetAtlasSource::_try_emit_changed() {
+	if (!initializing) {
+		emit_changed();
+	}
+}
+
 /////////////////////////////// TileSetScenesCollectionSource //////////////////////////////////////
 
 void TileSetScenesCollectionSource::_compute_next_alternative_id() {
 	while (scenes.has(next_scene_id)) {
 		next_scene_id = (next_scene_id % 1073741823) + 1; // 2 ** 30
 	};
+}
+
+void TileSetScenesCollectionSource::_try_emit_changed() {
+	if (!initializing) {
+		emit_changed();
+	}
 }
 
 int TileSetScenesCollectionSource::get_tiles_count() const {
@@ -4915,7 +4936,7 @@ int TileSetScenesCollectionSource::create_scene_tile(Ref<PackedScene> p_packed_s
 	set_scene_tile_scene(new_scene_id, p_packed_scene);
 	_compute_next_alternative_id();
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 
 	return new_scene_id;
 }
@@ -4935,7 +4956,7 @@ void TileSetScenesCollectionSource::set_scene_tile_id(int p_id, int p_new_id) {
 	scenes.erase(p_id);
 	scenes_ids.erase(p_id);
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 void TileSetScenesCollectionSource::set_scene_tile_scene(int p_id, Ref<PackedScene> p_packed_scene) {
@@ -4959,7 +4980,7 @@ void TileSetScenesCollectionSource::set_scene_tile_scene(int p_id, Ref<PackedSce
 	} else {
 		scenes[p_id].scene = Ref<PackedScene>();
 	}
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 Ref<PackedScene> TileSetScenesCollectionSource::get_scene_tile_scene(int p_id) const {
@@ -4972,7 +4993,7 @@ void TileSetScenesCollectionSource::set_scene_tile_display_placeholder(int p_id,
 
 	scenes[p_id].display_placeholder = p_display_placeholder;
 
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 bool TileSetScenesCollectionSource::get_scene_tile_display_placeholder(int p_id) const {
@@ -4985,7 +5006,7 @@ void TileSetScenesCollectionSource::remove_scene_tile(int p_id) {
 
 	scenes.erase(p_id);
 	scenes_ids.erase(p_id);
-	emit_signal(SNAME("changed"));
+	_try_emit_changed();
 }
 
 int TileSetScenesCollectionSource::get_next_scene_tile_id() const {
@@ -5041,6 +5062,12 @@ void TileSetScenesCollectionSource::_get_property_list(List<PropertyInfo> *p_lis
 			property_info.usage ^= PROPERTY_USAGE_STORAGE;
 		}
 		p_list->push_back(property_info);
+	}
+}
+
+void TileSetScenesCollectionSource::_notification(int p_notification) {
+	if (p_notification == NOTIFICATION_POSTINITIALIZE) {
+		initializing = false;
 	}
 }
 
