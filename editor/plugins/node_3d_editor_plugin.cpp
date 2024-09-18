@@ -1632,7 +1632,7 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseButton> b = p_event;
 
 	if (b.is_valid()) {
-		emit_signal(SNAME("clicked"), this);
+		emit_signal(SNAME("clicked"));
 
 		const real_t zoom_factor = 1 + (ZOOM_FREELOOK_MULTIPLIER - 1) * b->get_factor();
 		switch (b->get_button_index()) {
@@ -3988,7 +3988,7 @@ void Node3DEditorViewport::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("update_transform_gizmo_view"), &Node3DEditorViewport::update_transform_gizmo_view); // Used by call_deferred.
 
 	ADD_SIGNAL(MethodInfo("toggle_maximize_view", PropertyInfo(Variant::OBJECT, "viewport")));
-	ADD_SIGNAL(MethodInfo("clicked", PropertyInfo(Variant::OBJECT, "viewport")));
+	ADD_SIGNAL(MethodInfo("clicked"));
 }
 
 void Node3DEditorViewport::reset() {
@@ -6188,18 +6188,6 @@ void Node3DEditor::_menu_item_toggled(bool pressed, int p_option) {
 			tool_option_button[TOOL_OPT_USE_SNAP]->set_pressed(pressed);
 			snap_enabled = pressed;
 		} break;
-
-		case MENU_TOOL_OVERRIDE_CAMERA: {
-			EditorDebuggerNode *const debugger = EditorDebuggerNode::get_singleton();
-
-			using Override = EditorDebuggerNode::CameraOverride;
-			if (pressed) {
-				debugger->set_camera_override((Override)(Override::OVERRIDE_3D_1 + camera_override_viewport_id));
-			} else {
-				debugger->set_camera_override(Override::OVERRIDE_NONE);
-			}
-
-		} break;
 	}
 }
 
@@ -6224,36 +6212,6 @@ void Node3DEditor::_menu_gizmo_toggled(int p_option) {
 	gizmo_plugins_by_name.write[p_option]->set_state(state);
 
 	update_all_gizmos();
-}
-
-void Node3DEditor::_update_camera_override_button(bool p_game_running) {
-	Button *const button = tool_option_button[TOOL_OPT_OVERRIDE_CAMERA];
-
-	if (p_game_running) {
-		button->set_disabled(false);
-		button->set_tooltip_text(TTR("Project Camera Override\nOverrides the running project's camera with the editor viewport camera."));
-	} else {
-		button->set_disabled(true);
-		button->set_pressed(false);
-		button->set_tooltip_text(TTR("Project Camera Override\nNo project instance running. Run the project from the editor to use this feature."));
-	}
-}
-
-void Node3DEditor::_update_camera_override_viewport(Object *p_viewport) {
-	Node3DEditorViewport *current_viewport = Object::cast_to<Node3DEditorViewport>(p_viewport);
-
-	if (!current_viewport) {
-		return;
-	}
-
-	EditorDebuggerNode *const debugger = EditorDebuggerNode::get_singleton();
-
-	camera_override_viewport_id = current_viewport->index;
-	if (debugger->get_camera_override() >= EditorDebuggerNode::OVERRIDE_3D_1) {
-		using Override = EditorDebuggerNode::CameraOverride;
-
-		debugger->set_camera_override((Override)(Override::OVERRIDE_3D_1 + camera_override_viewport_id));
-	}
 }
 
 void Node3DEditor::_menu_item_pressed(int p_option) {
@@ -6286,6 +6244,9 @@ void Node3DEditor::_menu_item_pressed(int p_option) {
 		} break;
 		case MENU_VIEW_USE_1_VIEWPORT: {
 			viewport_base->set_view(Node3DEditorViewportContainer::VIEW_USE_1_VIEWPORT);
+			if (last_used_viewport > 0) {
+				last_used_viewport = 0;
+			}
 
 			view_menu->get_popup()->set_item_checked(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_1_VIEWPORT), true);
 			view_menu->get_popup()->set_item_checked(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_2_VIEWPORTS), false);
@@ -6297,6 +6258,9 @@ void Node3DEditor::_menu_item_pressed(int p_option) {
 		} break;
 		case MENU_VIEW_USE_2_VIEWPORTS: {
 			viewport_base->set_view(Node3DEditorViewportContainer::VIEW_USE_2_VIEWPORTS);
+			if (last_used_viewport > 1) {
+				last_used_viewport = 0;
+			}
 
 			view_menu->get_popup()->set_item_checked(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_1_VIEWPORT), false);
 			view_menu->get_popup()->set_item_checked(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_2_VIEWPORTS), true);
@@ -6308,6 +6272,9 @@ void Node3DEditor::_menu_item_pressed(int p_option) {
 		} break;
 		case MENU_VIEW_USE_2_VIEWPORTS_ALT: {
 			viewport_base->set_view(Node3DEditorViewportContainer::VIEW_USE_2_VIEWPORTS_ALT);
+			if (last_used_viewport > 1) {
+				last_used_viewport = 0;
+			}
 
 			view_menu->get_popup()->set_item_checked(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_1_VIEWPORT), false);
 			view_menu->get_popup()->set_item_checked(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_2_VIEWPORTS), false);
@@ -6319,6 +6286,9 @@ void Node3DEditor::_menu_item_pressed(int p_option) {
 		} break;
 		case MENU_VIEW_USE_3_VIEWPORTS: {
 			viewport_base->set_view(Node3DEditorViewportContainer::VIEW_USE_3_VIEWPORTS);
+			if (last_used_viewport > 2) {
+				last_used_viewport = 0;
+			}
 
 			view_menu->get_popup()->set_item_checked(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_1_VIEWPORT), false);
 			view_menu->get_popup()->set_item_checked(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_2_VIEWPORTS), false);
@@ -6330,6 +6300,9 @@ void Node3DEditor::_menu_item_pressed(int p_option) {
 		} break;
 		case MENU_VIEW_USE_3_VIEWPORTS_ALT: {
 			viewport_base->set_view(Node3DEditorViewportContainer::VIEW_USE_3_VIEWPORTS_ALT);
+			if (last_used_viewport > 2) {
+				last_used_viewport = 0;
+			}
 
 			view_menu->get_popup()->set_item_checked(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_1_VIEWPORT), false);
 			view_menu->get_popup()->set_item_checked(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_2_VIEWPORTS), false);
@@ -7576,7 +7549,6 @@ void Node3DEditor::_update_theme() {
 
 	tool_option_button[TOOL_OPT_LOCAL_COORDS]->set_icon(get_editor_theme_icon(SNAME("Object")));
 	tool_option_button[TOOL_OPT_USE_SNAP]->set_icon(get_editor_theme_icon(SNAME("Snap")));
-	tool_option_button[TOOL_OPT_OVERRIDE_CAMERA]->set_icon(get_editor_theme_icon(SNAME("Camera3D")));
 
 	view_menu->get_popup()->set_item_icon(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_1_VIEWPORT), get_editor_theme_icon(SNAME("Panels1")));
 	view_menu->get_popup()->set_item_icon(view_menu->get_popup()->get_item_index(MENU_VIEW_USE_2_VIEWPORTS), get_editor_theme_icon(SNAME("Panels2")));
@@ -7611,9 +7583,6 @@ void Node3DEditor::_notification(int p_what) {
 			SceneTreeDock::get_singleton()->get_tree_editor()->connect("node_changed", callable_mp(this, &Node3DEditor::_refresh_menu_icons));
 			editor_selection->connect("selection_changed", callable_mp(this, &Node3DEditor::_selection_changed));
 
-			EditorRunBar::get_singleton()->connect("stop_pressed", callable_mp(this, &Node3DEditor::_update_camera_override_button).bind(false));
-			EditorRunBar::get_singleton()->connect("play_pressed", callable_mp(this, &Node3DEditor::_update_camera_override_button).bind(true));
-
 			_update_preview_environment();
 
 			sun_state->set_custom_minimum_size(sun_vb->get_combined_minimum_size());
@@ -7645,15 +7614,6 @@ void Node3DEditor::_notification(int p_what) {
 			// Update grid color by rebuilding grid.
 			_finish_grid();
 			_init_grid();
-		} break;
-
-		case NOTIFICATION_VISIBILITY_CHANGED: {
-			if (!is_visible() && tool_option_button[TOOL_OPT_OVERRIDE_CAMERA]->is_pressed()) {
-				EditorDebuggerNode *debugger = EditorDebuggerNode::get_singleton();
-
-				debugger->set_camera_override(EditorDebuggerNode::OVERRIDE_NONE);
-				tool_option_button[TOOL_OPT_OVERRIDE_CAMERA]->set_pressed(false);
-			}
 		} break;
 
 		case NOTIFICATION_PHYSICS_PROCESS: {
@@ -7751,6 +7711,10 @@ void Node3DEditor::set_can_preview(Camera3D *p_preview) {
 
 VSplitContainer *Node3DEditor::get_shader_split() {
 	return shader_split;
+}
+
+Node3DEditorViewport *Node3DEditor::get_last_used_viewport() {
+	return viewports[last_used_viewport];
 }
 
 void Node3DEditor::add_control_to_left_panel(Control *p_control) {
@@ -7928,6 +7892,10 @@ void Node3DEditor::_toggle_maximize_view(Object *p_viewport) {
 			_menu_item_pressed(MENU_VIEW_USE_4_VIEWPORTS);
 		}
 	}
+}
+
+void Node3DEditor::_viewport_clicked(int p_viewport_idx) {
+	last_used_viewport = p_viewport_idx;
 }
 
 void Node3DEditor::_node_added(Node *p_node) {
@@ -8216,8 +8184,6 @@ Node3DEditor::Node3DEditor() {
 	snap_key_enabled = false;
 	tool_mode = TOOL_MODE_SELECT;
 
-	camera_override_viewport_id = 0;
-
 	// Add some margin to the sides for better esthetics.
 	// This prevents the first button's hover/pressed effect from "touching" the panel's border,
 	// which looks ugly.
@@ -8330,16 +8296,6 @@ Node3DEditor::Node3DEditor() {
 	tool_option_button[TOOL_OPT_USE_SNAP]->connect("toggled", callable_mp(this, &Node3DEditor::_menu_item_toggled).bind(MENU_TOOL_USE_SNAP));
 	tool_option_button[TOOL_OPT_USE_SNAP]->set_shortcut(ED_SHORTCUT("spatial_editor/snap", TTR("Use Snap"), Key::Y));
 	tool_option_button[TOOL_OPT_USE_SNAP]->set_shortcut_context(this);
-
-	main_menu_hbox->add_child(memnew(VSeparator));
-
-	tool_option_button[TOOL_OPT_OVERRIDE_CAMERA] = memnew(Button);
-	main_menu_hbox->add_child(tool_option_button[TOOL_OPT_OVERRIDE_CAMERA]);
-	tool_option_button[TOOL_OPT_OVERRIDE_CAMERA]->set_toggle_mode(true);
-	tool_option_button[TOOL_OPT_OVERRIDE_CAMERA]->set_theme_type_variation("FlatButton");
-	tool_option_button[TOOL_OPT_OVERRIDE_CAMERA]->set_disabled(true);
-	tool_option_button[TOOL_OPT_OVERRIDE_CAMERA]->connect("toggled", callable_mp(this, &Node3DEditor::_menu_item_toggled).bind(MENU_TOOL_OVERRIDE_CAMERA));
-	_update_camera_override_button(false);
 
 	main_menu_hbox->add_child(memnew(VSeparator));
 	sun_button = memnew(Button);
@@ -8486,7 +8442,7 @@ Node3DEditor::Node3DEditor() {
 	for (uint32_t i = 0; i < VIEWPORTS_COUNT; i++) {
 		viewports[i] = memnew(Node3DEditorViewport(this, i));
 		viewports[i]->connect("toggle_maximize_view", callable_mp(this, &Node3DEditor::_toggle_maximize_view));
-		viewports[i]->connect("clicked", callable_mp(this, &Node3DEditor::_update_camera_override_viewport));
+		viewports[i]->connect("clicked", callable_mp(this, &Node3DEditor::_viewport_clicked).bind(i));
 		viewports[i]->assign_pending_data_pointers(preview_node, &preview_bounds, accept);
 		viewport_base->add_child(viewports[i]);
 	}

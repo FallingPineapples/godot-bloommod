@@ -108,6 +108,10 @@ void Engine::set_time_scale(double p_scale) {
 }
 
 double Engine::get_time_scale() const {
+	return freeze_time_scale ? 0 : _time_scale;
+}
+
+double Engine::get_unfrozen_time_scale() const {
 	return _time_scale;
 }
 
@@ -358,6 +362,10 @@ Engine *Engine::singleton = nullptr;
 
 Engine *Engine::get_singleton() {
 	return singleton;
+}
+
+void Engine::set_freeze_time_scale(bool p_frozen) {
+	freeze_time_scale = p_frozen;
 }
 
 Engine::Engine() {

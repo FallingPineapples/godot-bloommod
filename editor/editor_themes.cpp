@@ -968,6 +968,12 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 
 	theme->set_stylebox("ScriptEditor", EditorStringName(EditorStyles), make_empty_stylebox(0, 0, 0, 0));
 
+	// Game view.
+	theme->set_type_variation("GamePanel", "Panel");
+	Ref<StyleBoxFlat> game_panel = theme->get_stylebox(SNAME("panel"), SNAME("Panel"))->duplicate();
+	game_panel->set_corner_radius_all(0);
+	theme->set_stylebox("panel", "GamePanel", game_panel);
+
 	// Launch Pad and Play buttons
 	Ref<StyleBoxFlat> style_launch_pad = make_flat_stylebox(dark_color_1, 2 * EDSCALE, 0, 2 * EDSCALE, 0, corner_width);
 	style_launch_pad->set_corner_radius_all(corner_radius * EDSCALE);

@@ -75,12 +75,20 @@ void AudioStreamPlayer::_notification(int p_what) {
 			stream_playbacks.clear();
 		} break;
 
+		case NOTIFICATION_SUSPENDED:
 		case NOTIFICATION_PAUSED: {
 			if (!can_process()) {
 				// Node can't process so we start fading out to silence
 				set_stream_paused(true);
 			}
 		} break;
+
+		case NOTIFICATION_UNSUSPENDED: {
+			if (get_tree()->is_paused()) {
+				break;
+			}
+			[[fallthrough]];
+		}
 
 		case NOTIFICATION_UNPAUSED: {
 			set_stream_paused(false);
