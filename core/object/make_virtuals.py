@@ -122,7 +122,7 @@ def generate_version(argcount, const=False, returns=False):
             callptrargsptr += ", "
         argtext += "m_type" + str(i + 1)
         callargtext += "m_type" + str(i + 1) + " arg" + str(i + 1)
-        callsiargs += "Variant(arg" + str(i + 1) + ")"
+        callsiargs += "_to_variant(arg" + str(i + 1) + ")"
         callsiargptrs += "&vargs[" + str(i) + "]"
         callptrargs += (
             "PtrToArg<m_type" + str(i + 1) + ">::EncodeT argval" + str(i + 1) + " = arg" + str(i + 1) + ";\\\n"
@@ -177,6 +177,8 @@ def run(target, source, env):
 
 #include "core/object/script_instance.h"
 
+#include <utility>
+
 #ifdef TOOLS_ENABLED
 #define GDVIRTUAL_TRACK(m_virtual, m_initialized) \\
     if (_get_extension()->reloadable) {\\
@@ -189,6 +191,37 @@ def run(target, source, env):
 #else
 #define GDVIRTUAL_TRACK(m_virtual, m_initialized)
 #endif
+
+// MSVC WORKAROUND START
+// FIXME The below helper functions are needed to work around an MSVC bug.
+// They should be removed (by modifying core/object/make_virtuals.py) once the bug ceases to be triggered.
+// The bug is triggered by the following code:
+// `Variant(arg)`
+// Through the introduction of the move constructor, MSVC forgets that `operator Variant()`
+// is also a valid way to resolve this call. So for some argument types, it fails the call because
+// it cannot convert to `Variant`.
+// The function `_to_variant` helps the compiler select `.operator Variant()` for appropriate arguments using SFINAE.
+
+template <typename T, typename = void>
+struct has_variant_operator : std::false_type {};
+
+template <typename T>
+struct has_variant_operator<T, std::void_t<decltype(std::declval<T>().operator Variant())>> : std::true_type {};
+
+// Function that is enabled if T has `.operator Variant()`.
+template <typename T>
+_ALWAYS_INLINE_ typename std::enable_if<has_variant_operator<T>::value, Variant>::type
+_to_variant(T&& t) {
+    return std::forward<T>(t).operator Variant();
+}
+
+// Function that is enabled if T does not have `.operator Variant()`.
+template <typename T>
+_ALWAYS_INLINE_ typename std::enable_if<!has_variant_operator<T>::value, Variant>::type
+_to_variant(T&& t) {
+    return Variant(std::forward<T>(t));
+}
+// MSVC WORKAROUND END
 
 """
 
