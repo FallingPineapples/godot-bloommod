@@ -420,6 +420,9 @@ public:
 	void set_multiplayer_poll_enabled(bool p_enabled);
 	bool is_multiplayer_poll_enabled() const;
 
+	SceneTree *duplicate() const;
+	void frame();
+
 	static void add_idle_callback(IdleCallback p_callback);
 
 	void set_disable_node_threading(bool p_disable);
@@ -427,6 +430,8 @@ public:
 
 	SceneTree();
 	~SceneTree();
+
+	explicit SceneTree(const SceneTree &from);
 };
 
 VARIANT_ENUM_CAST(SceneTree::GroupCallFlags);

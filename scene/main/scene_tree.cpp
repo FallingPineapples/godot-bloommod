@@ -1589,6 +1589,15 @@ bool SceneTree::is_multiplayer_poll_enabled() const {
 	return multiplayer_poll;
 }
 
+SceneTree *SceneTree::duplicate() const {
+	return memnew(SceneTree(*this));
+}
+
+void SceneTree::frame() {
+	physics_process(1./60);
+	process(1./60);
+}
+
 void SceneTree::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_root"), &SceneTree::get_root);
 	ClassDB::bind_method(D_METHOD("has_group", "name"), &SceneTree::has_group);
@@ -1658,6 +1667,9 @@ void SceneTree::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_multiplayer", "for_path"), &SceneTree::get_multiplayer, DEFVAL(NodePath()));
 	ClassDB::bind_method(D_METHOD("set_multiplayer_poll_enabled", "enabled"), &SceneTree::set_multiplayer_poll_enabled);
 	ClassDB::bind_method(D_METHOD("is_multiplayer_poll_enabled"), &SceneTree::is_multiplayer_poll_enabled);
+
+	ClassDB::bind_method(D_METHOD("duplicate"), &SceneTree::duplicate);
+	ClassDB::bind_method(D_METHOD("frame"), &SceneTree::frame);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "auto_accept_quit"), "set_auto_accept_quit", "is_auto_accept_quit");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "quit_on_go_back"), "set_quit_on_go_back", "is_quit_on_go_back");
@@ -1916,9 +1928,23 @@ SceneTree::~SceneTree() {
 		}
 	}
 
-	memdelete(process_group_call_queue_allocator);
+	if (process_group_call_queue_allocator) {
+		memdelete(process_group_call_queue_allocator);
+	}
 
 	if (singleton == this) {
 		singleton = nullptr;
 	}
+}
+
+SceneTree::SceneTree(const SceneTree &p_from) {
+	// TODO(consolemod): copy all script props
+	root = Object::cast_to<Window>(p_from.get_root()->duplicate(Node::DUPLICATE_GROUPS | Node::DUPLICATE_SIGNALS | Node::DUPLICATE_SCRIPTS | Node::DUPLICATE_INTERNAL_STATE));
+	ERR_FAIL_NULL(root);
+	multiplayer_poll = false;
+	root->_set_tree(this); // TODO(consolemod): figure out how to reduce side effects
+	// TODO(consolemod): fix non-node signals
+	current_scene = root->get_node(p_from.get_current_scene()->get_path());
+	set_pause(p_from.is_paused());
+	process_groups.push_back(&default_process_group);
 }

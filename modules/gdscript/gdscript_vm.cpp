@@ -35,6 +35,8 @@
 #include "core/core_string_names.h"
 #include "core/os/os.h"
 
+#include "scene/main/node.h"
+
 #ifdef DEBUG_ENABLED
 static String _get_element_type(Variant::Type builtin_type, const StringName &native_type, const Ref<Script> &script_type) {
 	if (script_type.is_valid() && script_type->is_valid()) {
@@ -3332,8 +3334,11 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 				int global_idx = _code_ptr[ip + 2];
 				GD_ERR_BREAK(global_idx < 0 || global_idx >= GDScriptLanguage::get_singleton()->get_global_array_size());
 
+				Node *node = Object::cast_to<Node>(variant_addresses[ADDR_TYPE_STACK][ADDR_STACK_SELF]);
+				GD_ERR_BREAK(!node);
+
 				GET_VARIANT_PTR(dst, 0);
-				*dst = GDScriptLanguage::get_singleton()->get_global_array()[global_idx];
+				*dst = node->get_node(GDScriptLanguage::get_singleton()->get_global_array()[global_idx]);
 
 				ip += 3;
 			}
