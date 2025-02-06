@@ -1158,7 +1158,7 @@ void RuntimeNodeSelect::_setup() {
 	selection_list = memnew(PopupMenu);
 	selection_list->set_theme(ThemeDB::get_singleton()->get_default_theme());
 	selection_list->set_auto_translate(false);
-	// selection_list->set_force_native(true); // TODO(consolemod)
+	// selection_list->set_force_native(true); // TODO(BLOOMmod): maybe fix and enable this
 	selection_list->connect("index_pressed", callable_mp(this, &RuntimeNodeSelect::_items_popup_index_pressed).bind(selection_list));
 	selection_list->connect("popup_hide", callable_mp(Object::cast_to<Node>(root), &Node::remove_child).bind(selection_list));
 

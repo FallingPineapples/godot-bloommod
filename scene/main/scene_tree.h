@@ -420,6 +420,7 @@ public:
 	void set_multiplayer_poll_enabled(bool p_enabled);
 	bool is_multiplayer_poll_enabled() const;
 
+	// BLOOMmod: savestate api
 	SceneTree *duplicate() const;
 	void frame();
 
@@ -431,6 +432,7 @@ public:
 	SceneTree();
 	~SceneTree();
 
+	// BLOOMmod: for savestates
 	explicit SceneTree(const SceneTree &from);
 };
 

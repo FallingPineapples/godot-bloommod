@@ -1589,10 +1589,14 @@ bool SceneTree::is_multiplayer_poll_enabled() const {
 	return multiplayer_poll;
 }
 
+// BLOOMmod: savestate api
 SceneTree *SceneTree::duplicate() const {
 	return memnew(SceneTree(*this));
 }
 
+// BLOOMmod: simulation control
+// TODO(BLOOMmod): is this actually the delta used?
+// TODO(BLOOMmod): more delta control?
 void SceneTree::frame() {
 	physics_process(1./60);
 	process(1./60);
@@ -1668,6 +1672,7 @@ void SceneTree::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_multiplayer_poll_enabled", "enabled"), &SceneTree::set_multiplayer_poll_enabled);
 	ClassDB::bind_method(D_METHOD("is_multiplayer_poll_enabled"), &SceneTree::is_multiplayer_poll_enabled);
 
+	// BLOOMmod: savestate api bindings - may be temporary?
 	ClassDB::bind_method(D_METHOD("duplicate"), &SceneTree::duplicate);
 	ClassDB::bind_method(D_METHOD("frame"), &SceneTree::frame);
 
@@ -1937,11 +1942,12 @@ SceneTree::~SceneTree() {
 	}
 }
 
+// BLOOMmod: savestate core!
 SceneTree::SceneTree(const SceneTree &p_from) {
 	root = Object::cast_to<Window>(p_from.get_root()->duplicate(Node::DUPLICATE_GROUPS | Node::DUPLICATE_SIGNALS | Node::DUPLICATE_SCRIPTS | Node::DUPLICATE_INTERNAL_STATE));
 	ERR_FAIL_NULL(root);
 	multiplayer_poll = false;
-	root->_set_tree(this); // TODO(consolemod): fix area2d emitting here
+	root->_set_tree(this); // TODO(BLOOMmod): fix area2d emitting here
 	current_scene = root->get_node(p_from.get_current_scene()->get_path());
 	set_pause(p_from.is_paused());
 	process_groups.push_back(&default_process_group);
