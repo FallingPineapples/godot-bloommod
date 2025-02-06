@@ -2526,7 +2526,11 @@ Node *Node::_duplicate(int p_flags, HashMap<const Node *, Node *> *r_duplimap) c
 	}
 
 	if (get_name() != String()) {
-		node->set_name(get_name());
+		if (Engine::get_singleton()->is_editor_hint()) {
+			node->set_name(get_name());
+		} else {
+			node->_set_name_nocheck(get_name());
+		}
 	}
 
 #ifdef TOOLS_ENABLED
@@ -2589,6 +2593,18 @@ Node *Node::_duplicate(int p_flags, HashMap<const Node *, Node *> *r_duplimap) c
 			parent->move_child(dup, pos);
 		}
 	}
+
+	if (p_flags & DUPLICATE_INTERNAL_STATE) {
+		node->data.ready_notified = data.ready_notified;
+		node->data.ready_first = data.ready_first;
+		node->set_process_input(data.input);
+		node->set_process_shortcut_input(data.shortcut_input);
+		node->set_process_unhandled_input(data.unhandled_input);
+		node->set_process_unhandled_key_input(data.unhandled_key_input);
+		node->set_process(data.process);
+		node->set_physics_process(data.physics_process);
+	}
+
 	return node;
 }
 
@@ -2693,7 +2709,7 @@ void Node::_duplicate_properties(const Node *p_root, const Node *p_original, Nod
 		}
 	}
 	for (const PropertyInfo &E : props) {
-		if (!(E.usage & PROPERTY_USAGE_STORAGE)) {
+		if (!((E.usage & PROPERTY_USAGE_STORAGE) || ((p_flags & DUPLICATE_INTERNAL_STATE) && (E.usage & PROPERTY_USAGE_SCRIPT_VARIABLE)))) {
 			continue;
 		}
 		const StringName name = E.name;
