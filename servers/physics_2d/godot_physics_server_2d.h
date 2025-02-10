@@ -119,6 +119,10 @@ public:
 	// this function only works on physics process, errors and returns null otherwise
 	virtual PhysicsDirectSpaceState2D *space_get_direct_state(RID p_space) override;
 
+	// BLOOMmod: simulation control
+	virtual void space_flush_queries(RID p_space) override;
+	virtual void space_step(RID p_space, real_t p_step) override;
+
 	/* AREA API */
 
 	virtual RID area_create() override;

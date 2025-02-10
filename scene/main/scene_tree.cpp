@@ -887,8 +887,9 @@ void SceneTree::set_pause(bool p_enabled) {
 
 	paused = p_enabled;
 
-	PhysicsServer3D::get_singleton()->set_active(!p_enabled);
-	PhysicsServer2D::get_singleton()->set_active(!p_enabled);
+	// BLOOMmod: physics server is kept disabled for control
+	// PhysicsServer3D::get_singleton()->set_active(!p_enabled);
+	// PhysicsServer2D::get_singleton()->set_active(!p_enabled);
 	if (get_root()) {
 		get_root()->_propagate_pause_notification(p_enabled);
 	}
@@ -1598,7 +1599,11 @@ SceneTree *SceneTree::duplicate() const {
 // TODO(BLOOMmod): is this actually the delta used?
 // TODO(BLOOMmod): more delta control?
 void SceneTree::frame() {
+	PhysicsServer2D::get_singleton()->sync();
+	PhysicsServer2D::get_singleton()->space_flush_queries(root->get_world_2d()->get_space());
 	physics_process(1./60);
+	PhysicsServer2D::get_singleton()->end_sync();
+	PhysicsServer2D::get_singleton()->space_step(root->get_world_2d()->get_space(), 1./60);
 	process(1./60);
 }
 

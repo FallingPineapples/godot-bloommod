@@ -64,6 +64,16 @@ void PhysicsServer2DWrapMT::thread_loop() {
 	physics_server_2d->finish();
 }
 
+// BLOOMmod: Just redirecting for now.
+// Threading seems unlikely, though this mechanism might not be the way anyway.
+void PhysicsServer2DWrapMT::space_flush_queries(RID p_space) {
+	physics_server_2d->space_flush_queries(p_space);
+}
+
+void PhysicsServer2DWrapMT::space_step(RID p_space, real_t p_step) {
+	physics_server_2d->space_step(p_space, p_step);
+}
+
 /* EVENT QUEUING */
 
 void PhysicsServer2DWrapMT::step(real_t p_step) {

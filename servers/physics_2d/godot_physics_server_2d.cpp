@@ -291,6 +291,19 @@ RID GodotPhysicsServer2D::area_create() {
 	return rid;
 }
 
+// BLOOMmod: simulation control implementation
+void GodotPhysicsServer2D::space_flush_queries(RID p_space) {
+	GodotSpace2D *space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL(space);
+	space->call_queries();
+}
+
+void GodotPhysicsServer2D::space_step(RID p_space, real_t p_step) {
+	GodotSpace2D *space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL(space);
+	stepper->step(space, p_step);
+}
+
 void GodotPhysicsServer2D::area_set_space(RID p_area, RID p_space) {
 	GodotArea2D *area = area_owner.get_or_null(p_area);
 	ERR_FAIL_NULL(area);

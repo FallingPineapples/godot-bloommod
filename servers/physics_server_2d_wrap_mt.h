@@ -125,6 +125,10 @@ public:
 		return physics_server_2d->space_get_contact_count(p_space);
 	}
 
+	// BLOOMmod: has to be added for overrides to work
+	virtual void space_flush_queries(RID p_space) override;
+	virtual void space_step(RID p_space, real_t p_step) override;
+
 	/* AREA API */
 
 	//FUNC0RID(area);

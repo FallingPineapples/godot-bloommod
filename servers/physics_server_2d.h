@@ -278,6 +278,14 @@ public:
 
 	//missing space parameters
 
+	// BLOOMmod: simulation control
+	virtual void space_flush_queries(RID p_space) {
+		ERR_PRINT("not implemented"); // TODO(BLOOMmod): better error message
+	};
+	virtual void space_step(RID p_space, real_t p_step) {
+		ERR_PRINT("not implemented");
+	};
+
 	/* AREA API */
 
 	//missing attenuation? missing better override?
