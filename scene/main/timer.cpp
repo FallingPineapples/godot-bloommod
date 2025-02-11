@@ -180,6 +180,15 @@ void Timer::_set_process(bool p_process, bool p_force) {
 	processing = p_process;
 }
 
+// BLOOMmod: resume timer here
+// _set_process already handles pause
+void Timer::_duplicate_internal_state(Node *p_copy) const {
+	Timer *timer = Object::cast_to<Timer>(p_copy);
+	ERR_FAIL_NULL(timer);
+	timer->time_left = time_left;
+	timer->_set_process(processing);
+}
+
 PackedStringArray Timer::get_configuration_warnings() const {
 	PackedStringArray warnings = Node::get_configuration_warnings();
 

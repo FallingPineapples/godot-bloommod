@@ -2594,6 +2594,8 @@ Node *Node::_duplicate(int p_flags, HashMap<const Node *, Node *> *r_duplimap) c
 		}
 	}
 
+	// BLOOMmod: savestates must copy internal state
+	// without this, NOTIFICATION_READY is reemitted
 	if (p_flags & DUPLICATE_INTERNAL_STATE) {
 		node->data.ready_notified = data.ready_notified;
 		node->data.ready_first = data.ready_first;
@@ -2754,6 +2756,12 @@ void Node::_duplicate_properties(const Node *p_root, const Node *p_original, Nod
 		Node *copy_child = p_copy->get_child(i);
 		ERR_FAIL_NULL_MSG(copy_child, "Child node disappeared while duplicating.");
 		_duplicate_properties(p_root, p_original->get_child(i), copy_child, p_flags);
+	}
+
+	// BLOOMmod: savestates must copy internal state
+	// without this, timers don't keep running
+	if (p_flags & DUPLICATE_INTERNAL_STATE) {
+		p_original->_duplicate_internal_state(p_copy);
 	}
 }
 

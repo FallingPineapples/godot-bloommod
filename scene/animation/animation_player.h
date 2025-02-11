@@ -122,6 +122,9 @@ protected:
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 	void _notification(int p_what);
 
+	// BLOOMmod: resume animation
+	virtual void _duplicate_internal_state(Node *p_copy) const override;
+
 	static void _bind_methods();
 
 	// Make animation instances.

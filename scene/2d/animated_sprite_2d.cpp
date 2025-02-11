@@ -284,6 +284,16 @@ void AnimatedSprite2D::_notification(int p_what) {
 	}
 }
 
+// BLOOMmod: set frame and playing
+void AnimatedSprite2D::_duplicate_internal_state(Node *p_copy) const {
+	AnimatedSprite2D *sprite = Object::cast_to<AnimatedSprite2D>(p_copy);
+	ERR_FAIL_NULL(sprite);
+	sprite->frame = frame;
+	sprite->frame_progress = frame_progress;
+	sprite->playing = playing;
+	sprite->set_process_internal(playing);
+}
+
 void AnimatedSprite2D::set_sprite_frames(const Ref<SpriteFrames> &p_frames) {
 	if (frames == p_frames) {
 		return;

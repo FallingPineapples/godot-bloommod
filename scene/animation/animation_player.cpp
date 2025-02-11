@@ -157,6 +157,18 @@ void AnimationPlayer::_notification(int p_what) {
 	}
 }
 
+// BLOOMmod: resume animation here
+void AnimationPlayer::_duplicate_internal_state(Node *p_copy) const {
+	AnimationPlayer *player = Object::cast_to<AnimationPlayer>(p_copy);
+	ERR_FAIL_NULL(player);
+	player->playback = playback;
+	if (playback.current.from) {
+		player->playback.current.from = &(player->animation_set[playback.assigned]);
+	}
+	player->playing = playing;
+	player->_set_process(playing);
+}
+
 void AnimationPlayer::_process_playback_data(PlaybackData &cd, double p_delta, float p_blend, bool p_seeked, bool p_started, bool p_is_current) {
 	double speed = speed_scale * cd.speed_scale;
 	bool backwards = signbit(speed); // Negative zero means playing backwards too.

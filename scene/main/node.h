@@ -242,6 +242,9 @@ private:
 	void _duplicate_signals(const Node *p_original, Node *p_copy) const;
 	Node *_duplicate(int p_flags, HashMap<const Node *, Node *> *r_duplimap = nullptr) const;
 
+	// BLOOMmod: for e.g. resuming timers and animations
+	virtual void _duplicate_internal_state(Node *p_copy) const {};
+
 	TypedArray<StringName> _get_groups() const;
 
 	Error _rpc_bind(const Variant **p_args, int p_argcount, Callable::CallError &r_error);

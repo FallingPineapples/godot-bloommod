@@ -63,6 +63,9 @@ class AnimatedSprite2D : public Node2D {
 
 	Rect2 _get_rect() const;
 
+	// BLOOMmod: copy animation
+	virtual void _duplicate_internal_state(Node *p_copy) const override;
+
 protected:
 #ifndef DISABLE_DEPRECATED
 	bool _set(const StringName &p_name, const Variant &p_value);
