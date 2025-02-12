@@ -1952,8 +1952,9 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 	root = Object::cast_to<Window>(p_from.get_root()->duplicate(Node::DUPLICATE_GROUPS | Node::DUPLICATE_SIGNALS | Node::DUPLICATE_SCRIPTS | Node::DUPLICATE_INTERNAL_STATE));
 	ERR_FAIL_NULL(root);
 	multiplayer_poll = false;
-	root->_set_tree(this); // TODO(BLOOMmod): fix area2d emitting here
+	root->_set_tree(this);
 	current_scene = root->get_node(p_from.get_current_scene()->get_path());
 	set_pause(p_from.is_paused());
+	// TODO(BLOOMmod): copy physics server state
 	process_groups.push_back(&default_process_group);
 }

@@ -1703,19 +1703,43 @@ void CharacterBody2D::set_up_direction(const Vector2 &p_up_direction) {
 	up_direction = p_up_direction.normalized();
 }
 
+// BLOOMmod: copy last move_and_slide results
+// must remap physics RIDs and ObjectIDs
+void CharacterBody2D::_duplicate_internal_state(Node *p_copy) const {
+	CharacterBody2D *body = Object::cast_to<CharacterBody2D>(p_copy);
+	ERR_FAIL_NULL(body);
+	body->floor_normal = floor_normal;
+	body->platform_velocity = platform_velocity;
+	body->wall_normal = wall_normal;
+	body->last_motion = last_motion;
+	body->previous_position = previous_position;
+	body->real_velocity = real_velocity;
+	// TODO(BLOOMmod): platform_rid
+	// TODO(BLOOMmod): platform_object_id
+	body->on_floor = on_floor;
+	body->on_ceiling = on_ceiling;
+	body->on_wall = on_wall;
+	// TODO(BLOOMmod): motion_results
+	// TODO(BLOOMmod): slide_colliders?
+}
+
 void CharacterBody2D::_notification(int p_what) {
-	switch (p_what) {
-		case NOTIFICATION_ENTER_TREE: {
-			// Reset move_and_slide() data.
-			on_floor = false;
-			platform_rid = RID();
-			platform_object_id = ObjectID();
-			on_ceiling = false;
-			on_wall = false;
-			motion_results.clear();
-			platform_velocity = Vector2();
-		} break;
-	}
+	// BLOOMmod: this breaks savestates
+	// since _duplicate_internal_state is called when the node is outside the tree
+	// TODO(BLOOMmod): is there a better way of doing this?
+	// it would be better if this didn't affect normal operation
+	// switch (p_what) {
+	// 	case NOTIFICATION_ENTER_TREE: {
+	// 		// Reset move_and_slide() data.
+	// 		on_floor = false;
+	// 		platform_rid = RID();
+	// 		platform_object_id = ObjectID();
+	// 		on_ceiling = false;
+	// 		on_wall = false;
+	// 		motion_results.clear();
+	// 		platform_velocity = Vector2();
+	// 	} break;
+	// }
 }
 
 void CharacterBody2D::_bind_methods() {

@@ -1633,6 +1633,7 @@ void Object::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_signal_connection_list", "signal"), &Object::_get_signal_connection_list);
 	ClassDB::bind_method(D_METHOD("get_incoming_connections"), &Object::_get_incoming_connections);
 
+	// BLOOMmod: connect signals from code with CONNECT_PERSIST by default
 	ClassDB::bind_method(D_METHOD("connect", "signal", "callable", "flags"), &Object::connect, DEFVAL(CONNECT_PERSIST));
 	ClassDB::bind_method(D_METHOD("disconnect", "signal", "callable"), &Object::disconnect);
 	ClassDB::bind_method(D_METHOD("is_connected", "signal", "callable"), &Object::is_connected);

@@ -452,6 +452,9 @@ private:
 	void _apply_floor_snap(bool p_wall_as_floor = false);
 	void _snap_on_floor(bool p_was_on_floor, bool p_vel_dir_facing_up, bool p_wall_as_floor = false);
 
+	// BLOOMmod: copy last move_and_slide results
+	virtual void _duplicate_internal_state(Node *p_copy) const override;
+
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();

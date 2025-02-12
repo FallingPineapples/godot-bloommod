@@ -185,7 +185,7 @@ public:
 	operator String() const;
 
 	Error emit(const Variant **p_arguments, int p_argcount) const;
-	Error connect(const Callable &p_callable, uint32_t p_flags = 2);
+	Error connect(const Callable &p_callable, uint32_t p_flags = 2); // BLOOMmod: flag 2 (CONNECT_PERSIST) by default
 	void disconnect(const Callable &p_callable);
 	bool is_connected(const Callable &p_callable) const;
 
