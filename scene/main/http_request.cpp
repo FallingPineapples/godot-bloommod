@@ -33,7 +33,9 @@
 #include "scene/main/timer.h"
 
 Error HTTPRequest::_request() {
-	return client->connect_to_host(url, port, use_tls ? tls_options : nullptr);
+	// BLOOMmod: disable HTTPRequest to discourage cheating
+	return ERR_UNAVAILABLE;
+	// return client->connect_to_host(url, port, use_tls ? tls_options : nullptr);
 }
 
 Error HTTPRequest::_parse_url(const String &p_url) {
