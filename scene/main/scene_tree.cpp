@@ -1599,12 +1599,19 @@ SceneTree *SceneTree::duplicate() const {
 // TODO(BLOOMmod): is this actually the delta used?
 // TODO(BLOOMmod): more delta control?
 void SceneTree::frame() {
+	MainLoop *prev_main_loop = Engine::get_singleton()->_main_loop;
+	bool prev_in_physics = Engine::get_singleton()->_in_physics;
+	Engine::get_singleton()->_main_loop = this;
+	Engine::get_singleton()->_in_physics = true;
 	PhysicsServer2D::get_singleton()->sync();
 	PhysicsServer2D::get_singleton()->space_flush_queries(root->get_world_2d()->get_space());
 	physics_process(1./60);
 	PhysicsServer2D::get_singleton()->end_sync();
 	PhysicsServer2D::get_singleton()->space_step(root->get_world_2d()->get_space(), 1./60);
+	Engine::get_singleton()->_in_physics = false;
 	process(1./60);
+	Engine::get_singleton()->_in_physics = prev_in_physics;
+	Engine::get_singleton()->_main_loop = prev_main_loop;
 }
 
 void SceneTree::_bind_methods() {

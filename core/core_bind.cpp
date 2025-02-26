@@ -1618,8 +1618,10 @@ int Engine::get_frames_drawn() {
 }
 
 MainLoop *Engine::get_main_loop() const {
+	// BLOOMmod: override in SceneTree::frame()
+	return ::Engine::get_singleton()->get_main_loop();
 	// Needs to remain in OS, since it's actually OS that interacts with it, but it's better exposed here
-	return ::OS::get_singleton()->get_main_loop();
+	// return ::OS::get_singleton()->get_main_loop();
 }
 
 Dictionary Engine::get_version_info() const {

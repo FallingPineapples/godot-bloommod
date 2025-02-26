@@ -78,6 +78,10 @@ private:
 	uint64_t _process_frames = 0;
 	bool _in_physics = false;
 
+	// BLOOMmod: SceneTree::frame() needs to change _main_loop and _in_physics
+	friend class SceneTree;
+	MainLoop *_main_loop = nullptr;
+
 	List<Singleton> singletons;
 	HashMap<StringName, Object *> singleton_ptrs;
 
@@ -123,6 +127,9 @@ public:
 	uint64_t get_frame_ticks() const { return _frame_ticks; }
 	double get_process_step() const { return _process_step; }
 	double get_physics_interpolation_fraction() const { return _physics_interpolation_fraction; }
+
+	// BLOOMmod: this is needed for core_bind to work
+	MainLoop *get_main_loop() const { return _main_loop; }
 
 	void set_time_scale(double p_scale);
 	double get_time_scale() const;
