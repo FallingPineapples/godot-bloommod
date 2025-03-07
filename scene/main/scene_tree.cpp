@@ -1769,6 +1769,8 @@ void SceneTree::set_disable_node_threading(bool p_disable) {
 SceneTree::SceneTree() {
 	if (singleton == nullptr) {
 		singleton = this;
+		// BLOOMmod: initialize override
+		Engine::get_singleton()->_main_loop = this;
 	}
 	debug_collisions_color = GLOBAL_DEF("debug/shapes/collision/shape_color", Color(0.0, 0.6, 0.7, 0.42));
 	debug_collision_contact_color = GLOBAL_DEF("debug/shapes/collision/contact_color", Color(1.0, 0.2, 0.1, 0.8));
@@ -1956,11 +1958,14 @@ SceneTree::~SceneTree() {
 
 // BLOOMmod: savestate core!
 SceneTree::SceneTree(const SceneTree &p_from) {
-	root = Object::cast_to<Window>(p_from.get_root()->duplicate(Node::DUPLICATE_GROUPS | Node::DUPLICATE_SIGNALS | Node::DUPLICATE_SCRIPTS | Node::DUPLICATE_INTERNAL_STATE));
+	ERR_FAIL_NULL(p_from.root);
+	root = Object::cast_to<Window>(p_from.root->duplicate(Node::DUPLICATE_GROUPS | Node::DUPLICATE_SIGNALS | Node::DUPLICATE_SCRIPTS | Node::DUPLICATE_INTERNAL_STATE));
 	ERR_FAIL_NULL(root);
 	multiplayer_poll = false;
 	root->_set_tree(this);
-	current_scene = root->get_node(p_from.get_current_scene()->get_path());
+	if (p_from.current_scene) {
+		current_scene = root->get_node(p_from.current_scene->get_path());
+	}
 	set_pause(p_from.is_paused());
 	// TODO(BLOOMmod): copy physics server state
 	process_groups.push_back(&default_process_group);
