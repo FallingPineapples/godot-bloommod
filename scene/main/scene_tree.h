@@ -262,6 +262,9 @@ private:
 	//used by viewport
 	void _call_input_pause(const StringName &p_group, CallInputType p_call_type, const Ref<InputEvent> &p_input, Viewport *p_viewport);
 
+	// BLOOMmod: global overrides go here
+	Vector<Variant> gdscript_global_array;
+
 protected:
 	void _notification(int p_notification);
 	static void _bind_methods();
@@ -423,6 +426,9 @@ public:
 	// BLOOMmod: savestate api
 	SceneTree *duplicate() const;
 	void frame();
+
+	// BLOOMmod: needed for global overrides
+	Variant *get_gdscript_global_array();
 
 	static void add_idle_callback(IdleCallback p_callback);
 

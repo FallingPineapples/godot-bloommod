@@ -3223,12 +3223,9 @@ bool Main::start() {
 					//defer so references are all valid on _ready()
 					to_add.push_back(n);
 
-					// consolemod: autoloads are copied, so can't directly be globals
-					// store a NodePath instead for retrieving it later
 					if (info.is_singleton) {
 						for (int i = 0; i < ScriptServer::get_language_count(); i++) {
-							// ScriptServer::get_language(i)->add_global_constant(info.name, n);
-							ScriptServer::get_language(i)->add_global_constant(info.name, NodePath(Vector<StringName>{StringName("root"), info.name}, true));
+							ScriptServer::get_language(i)->add_global_constant(info.name, n);
 						}
 					}
 				}

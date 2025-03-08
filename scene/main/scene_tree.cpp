@@ -42,6 +42,7 @@
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
 #include "core/string/print_string.h"
+#include "modules/gdscript/gdscript.h"
 #include "node.h"
 #include "scene/animation/tween.h"
 #include "scene/debugger/scene_debugger.h"
@@ -1614,6 +1615,14 @@ void SceneTree::frame() {
 	Engine::get_singleton()->_main_loop = prev_main_loop;
 }
 
+// BLOOMmod: return overrides if they are loaded yet, otherwise fall back to default
+Variant *SceneTree::get_gdscript_global_array() {
+	if (unlikely(gdscript_global_array.size() == 0)) {
+		 return GDScriptLanguage::get_singleton()->get_global_array();
+	}
+	return gdscript_global_array.ptrw();
+}
+
 void SceneTree::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_root"), &SceneTree::get_root);
 	ClassDB::bind_method(D_METHOD("has_group", "name"), &SceneTree::has_group);
@@ -1959,6 +1968,11 @@ SceneTree::~SceneTree() {
 // BLOOMmod: savestate core!
 SceneTree::SceneTree(const SceneTree &p_from) {
 	ERR_FAIL_NULL(p_from.root);
+	if (unlikely(p_from.gdscript_global_array.size() == 0)) {
+		gdscript_global_array = GDScriptLanguage::get_singleton()->get_global_array_vector();
+	} else {
+		gdscript_global_array = p_from.gdscript_global_array;
+	}
 	root = Object::cast_to<Window>(p_from.root->duplicate(Node::DUPLICATE_GROUPS | Node::DUPLICATE_SIGNALS | Node::DUPLICATE_SCRIPTS | Node::DUPLICATE_INTERNAL_STATE));
 	ERR_FAIL_NULL(root);
 	multiplayer_poll = false;
@@ -1969,4 +1983,16 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 	set_pause(p_from.is_paused());
 	// TODO(BLOOMmod): copy physics server state
 	process_groups.push_back(&default_process_group);
+	HashMap<StringName, ProjectSettings::AutoloadInfo> autoloads = ProjectSettings::get_singleton()->get_autoload_list();
+	for (const KeyValue<StringName, ProjectSettings::AutoloadInfo> &E : autoloads) {
+		const ProjectSettings::AutoloadInfo &info = E.value;
+		if (!info.is_singleton) { continue; }
+		int idx = GDScriptLanguage::get_singleton()->get_global_map()[info.name];
+		Node *old_node = Object::cast_to<Node>(gdscript_global_array.get(idx));
+		ERR_CONTINUE(!old_node);
+		ERR_CONTINUE(!p_from.root->is_ancestor_of(old_node));
+		NodePath path = p_from.root->get_path_to(old_node);
+		ERR_CONTINUE(!root->has_node(path));
+		gdscript_global_array.write[idx] = root->get_node(path);
+	}
 }

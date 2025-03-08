@@ -3334,14 +3334,15 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 				int global_idx = _code_ptr[ip + 2];
 				GD_ERR_BREAK(global_idx < 0 || global_idx >= GDScriptLanguage::get_singleton()->get_global_array_size());
 
-				// BLOOMmod: this opcode is only used for autoloads
-				// since they are stored as a NodePath, fetch it here
-				// TODO(BLOOMmod): what to do if the node has left the SceneTree?
-				Node *node = Object::cast_to<Node>(variant_addresses[ADDR_TYPE_STACK][ADDR_STACK_SELF]);
-				GD_ERR_BREAK(!node);
-
 				GET_VARIANT_PTR(dst, 0);
-				*dst = node->get_node(GDScriptLanguage::get_singleton()->get_global_array()[global_idx]);
+
+				// BLOOMmod: use Engine instead of OS to respect overrides
+				SceneTree *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
+				if (tree) {
+					*dst = tree->get_gdscript_global_array()[global_idx];
+				} else {
+					*dst = GDScriptLanguage::get_singleton()->get_global_array()[global_idx];
+				}
 
 				ip += 3;
 			}
