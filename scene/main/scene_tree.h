@@ -430,6 +430,9 @@ public:
 	// BLOOMmod: needed for global overrides
 	Variant *get_gdscript_global_array();
 
+	// BLOOMmod: TAS inputs sent here
+	Input *get_input_object() const;
+
 	static void add_idle_callback(IdleCallback p_callback);
 
 	void set_disable_node_threading(bool p_disable);
@@ -439,7 +442,7 @@ public:
 	~SceneTree();
 
 	// BLOOMmod: for savestates
-	explicit SceneTree(const SceneTree &from);
+	explicit SceneTree(const SceneTree &p_from);
 };
 
 VARIANT_ENUM_CAST(SceneTree::GroupCallFlags);

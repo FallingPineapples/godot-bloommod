@@ -618,6 +618,7 @@ void SceneTree::process_tweens(double p_delta, bool p_physics) {
 	}
 }
 
+// TODO(BLOOMmod): does this need to be called when cleaning up savestates
 void SceneTree::finalize() {
 	_flush_delete_queue();
 
@@ -1596,21 +1597,29 @@ SceneTree *SceneTree::duplicate() const {
 	return memnew(SceneTree(*this));
 }
 
-// BLOOMmod: simulation control
+// BLOOMmod: see Main::iteration()
 // TODO(BLOOMmod): is this actually the delta used?
 // TODO(BLOOMmod): more delta control?
 void SceneTree::frame() {
 	MainLoop *prev_main_loop = Engine::get_singleton()->_main_loop;
 	bool prev_in_physics = Engine::get_singleton()->_in_physics;
+
 	Engine::get_singleton()->_main_loop = this;
+	Engine::get_singleton()->_in_physics = false;
+	get_input_object()->flush_buffered_events();
+
 	Engine::get_singleton()->_in_physics = true;
 	PhysicsServer2D::get_singleton()->sync();
 	PhysicsServer2D::get_singleton()->space_flush_queries(root->get_world_2d()->get_space());
 	physics_process(1./60);
 	PhysicsServer2D::get_singleton()->end_sync();
 	PhysicsServer2D::get_singleton()->space_step(root->get_world_2d()->get_space(), 1./60);
+	get_input_object()->_physics_frames++;
 	Engine::get_singleton()->_in_physics = false;
+
 	process(1./60);
+	get_input_object()->_process_frames++;
+
 	Engine::get_singleton()->_in_physics = prev_in_physics;
 	Engine::get_singleton()->_main_loop = prev_main_loop;
 }
@@ -1621,6 +1630,16 @@ Variant *SceneTree::get_gdscript_global_array() {
 		 return GDScriptLanguage::get_singleton()->get_global_array();
 	}
 	return gdscript_global_array.ptrw();
+}
+
+Input *SceneTree::get_input_object() const {
+	if (gdscript_global_array.size() == 0) {
+		 return Input::get_singleton();
+	}
+	int idx = GDScriptLanguage::get_singleton()->get_global_map()[StringName("Input")];
+	Input *id = Object::cast_to<Input>(gdscript_global_array.get(idx));
+	ERR_FAIL_NULL_V(id, nullptr);
+	return id;
 }
 
 void SceneTree::_bind_methods() {
@@ -1693,9 +1712,12 @@ void SceneTree::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_multiplayer_poll_enabled", "enabled"), &SceneTree::set_multiplayer_poll_enabled);
 	ClassDB::bind_method(D_METHOD("is_multiplayer_poll_enabled"), &SceneTree::is_multiplayer_poll_enabled);
 
-	// BLOOMmod: savestate api bindings - may be temporary?
+	// BLOOMmod: savestate api bindings
+	// TODO(BLOOMmod): if moved to C++, remove
 	ClassDB::bind_method(D_METHOD("duplicate"), &SceneTree::duplicate);
 	ClassDB::bind_method(D_METHOD("frame"), &SceneTree::frame);
+
+	ClassDB::bind_method(D_METHOD("get_input_object"), &SceneTree::get_input_object);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "auto_accept_quit"), "set_auto_accept_quit", "is_auto_accept_quit");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "quit_on_go_back"), "set_quit_on_go_back", "is_quit_on_go_back");
@@ -1962,6 +1984,8 @@ SceneTree::~SceneTree() {
 
 	if (singleton == this) {
 		singleton = nullptr;
+	} else if (gdscript_global_array.size() != 0) {
+		memdelete(get_input_object());
 	}
 }
 
@@ -1975,6 +1999,7 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 	}
 	root = Object::cast_to<Window>(p_from.root->duplicate(Node::DUPLICATE_GROUPS | Node::DUPLICATE_SIGNALS | Node::DUPLICATE_SCRIPTS | Node::DUPLICATE_INTERNAL_STATE));
 	ERR_FAIL_NULL(root);
+	// TODO(BLOOMmod): root close_requested signal
 	multiplayer_poll = false;
 	root->_set_tree(this);
 	if (p_from.current_scene) {
@@ -1995,4 +2020,6 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 		ERR_CONTINUE(!root->has_node(path));
 		gdscript_global_array.write[idx] = root->get_node(path);
 	}
+	int input_idx = GDScriptLanguage::get_singleton()->get_global_map()[StringName("Input")];
+	gdscript_global_array.write[input_idx] = memnew(Input(*p_from.get_input_object()));
 }

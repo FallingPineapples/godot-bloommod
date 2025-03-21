@@ -130,6 +130,12 @@ private:
 
 	HashMap<StringName, Action> action_state;
 
+	// BLOOMmod: since Engine isn't duplicated (yet), frame counts need to be moved here
+	friend class SceneTree;
+	friend class Main;
+	uint64_t _physics_frames = 0;
+	uint64_t _process_frames = 0;
+
 	bool emulate_touch_from_mouse = false;
 	bool emulate_mouse_from_touch = false;
 	bool use_input_buffering = false;
@@ -374,6 +380,9 @@ public:
 
 	Input();
 	~Input();
+
+	// BLOOMmod: for savestates
+	explicit Input(const Input &p_from);
 };
 
 VARIANT_ENUM_CAST(Input::MouseMode);

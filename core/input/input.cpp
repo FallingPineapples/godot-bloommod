@@ -381,9 +381,9 @@ bool Input::is_action_just_pressed(const StringName &p_action, bool p_exact) con
 	bool pressed_requirement = legacy_just_pressed_behavior ? E->value.pressed : true;
 
 	if (Engine::get_singleton()->is_in_physics_frame()) {
-		return pressed_requirement && E->value.pressed_physics_frame == Engine::get_singleton()->get_physics_frames();
+		return pressed_requirement && E->value.pressed_physics_frame == _physics_frames;
 	} else {
-		return pressed_requirement && E->value.pressed_process_frame == Engine::get_singleton()->get_process_frames();
+		return pressed_requirement && E->value.pressed_process_frame == _process_frames;
 	}
 }
 
@@ -407,9 +407,9 @@ bool Input::is_action_just_released(const StringName &p_action, bool p_exact) co
 	bool released_requirement = legacy_just_pressed_behavior ? !E->value.pressed : true;
 
 	if (Engine::get_singleton()->is_in_physics_frame()) {
-		return released_requirement && E->value.released_physics_frame == Engine::get_singleton()->get_physics_frames();
+		return released_requirement && E->value.released_physics_frame == _physics_frames;
 	} else {
-		return released_requirement && E->value.released_process_frame == Engine::get_singleton()->get_process_frames();
+		return released_requirement && E->value.released_process_frame == _process_frames;
 	}
 }
 
@@ -802,8 +802,8 @@ void Input::_parse_input_event_impl(const Ref<InputEvent> &p_event, bool p_is_em
 		if (!p_event->is_echo()) {
 			if (p_event->is_action_pressed(E.key)) {
 				if (!action.pressed) {
-					action.pressed_physics_frame = Engine::get_singleton()->get_physics_frames();
-					action.pressed_process_frame = Engine::get_singleton()->get_process_frames();
+					action.pressed_physics_frame = _physics_frames;
+					action.pressed_process_frame = _process_frames;
 				}
 				action.pressed |= ((uint64_t)1 << event_index);
 			} else {
@@ -811,8 +811,8 @@ void Input::_parse_input_event_impl(const Ref<InputEvent> &p_event, bool p_is_em
 				action.pressed &= ~(1 << MAX_EVENT); // Always release the event from action_press() method.
 
 				if (!action.pressed) {
-					action.released_physics_frame = Engine::get_singleton()->get_physics_frames();
-					action.released_process_frame = Engine::get_singleton()->get_process_frames();
+					action.released_physics_frame = _physics_frames;
+					action.released_process_frame = _process_frames;
 				}
 				_update_action_strength(action, MAX_EVENT, 0.0);
 				_update_action_raw_strength(action, MAX_EVENT, 0.0);
@@ -938,8 +938,8 @@ void Input::action_press(const StringName &p_action, float p_strength) {
 	Action &action = action_state[p_action];
 
 	if (!action.pressed) {
-		action.pressed_physics_frame = Engine::get_singleton()->get_physics_frames();
-		action.pressed_process_frame = Engine::get_singleton()->get_process_frames();
+		action.pressed_physics_frame = _physics_frames;
+		action.pressed_process_frame = _process_frames;
 	}
 	action.pressed |= 1 << MAX_EVENT;
 	_update_action_strength(action, MAX_EVENT, p_strength);
@@ -954,8 +954,8 @@ void Input::action_release(const StringName &p_action) {
 	action.pressed = 0;
 	action.strength = 0.0;
 	action.raw_strength = 0.0;
-	action.released_physics_frame = Engine::get_singleton()->get_physics_frames();
-	action.released_process_frame = Engine::get_singleton()->get_process_frames();
+	action.released_physics_frame = _physics_frames;
+	action.released_process_frame = _process_frames;
 	for (uint64_t i = 0; i <= MAX_EVENT; i++) {
 		action.strengths[i] = 0.0;
 		action.raw_strengths[i] = 0.0;
@@ -1042,10 +1042,9 @@ void Input::parse_input_event(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(p_event.is_null());
 
 #ifdef DEBUG_ENABLED
-	uint64_t curr_frame = Engine::get_singleton()->get_process_frames();
-	if (curr_frame != last_parsed_frame) {
+	if (_process_frames != last_parsed_frame) {
 		frame_parsed_events.clear();
-		last_parsed_frame = curr_frame;
+		last_parsed_frame = _process_frames;
 		frame_parsed_events.insert(p_event);
 	} else if (frame_parsed_events.has(p_event)) {
 		// It would be technically safe to send the same event in cases such as:
@@ -1741,7 +1740,35 @@ Input::Input() {
 }
 
 Input::~Input() {
-	singleton = nullptr;
+	if (singleton == this) {
+		singleton = nullptr;
+	}
+}
+
+// BLOOMmod: needed for savestates
+Input::Input(const Input &p_from) {
+	mouse_button_mask = p_from.mouse_button_mask;
+	key_label_pressed = p_from.key_label_pressed;
+	physical_keys_pressed = p_from.physical_keys_pressed;
+	keys_pressed = p_from.keys_pressed;
+	joy_buttons_pressed = p_from.joy_buttons_pressed;
+	_joy_axis = p_from._joy_axis;
+	// TODO(BLOOMmod): copy orientation sensor state?
+	mouse_pos = p_from.mouse_pos;
+	legacy_just_pressed_behavior = p_from.legacy_just_pressed_behavior;
+	disable_input = p_from.disable_input;
+	// TODO(BLOOMmod): how to handle mouse mode?
+	action_state = p_from.action_state;
+	_physics_frames = p_from._physics_frames;
+	_process_frames = p_from._process_frames;
+	emulate_touch_from_mouse = p_from.emulate_touch_from_mouse;
+	emulate_mouse_from_touch = p_from.emulate_mouse_from_touch;
+	use_input_buffering = p_from.use_input_buffering;
+	// use_accumulated_input = p_from.use_accumulated_input; // BLOOMmod: only true is supported
+	mouse_from_touch_index = p_from.mouse_from_touch_index;
+	// TODO(BLOOMmod): what needs to be copied?
+	// TODO(BLOOMmod): what should event_dispatch_function be?
+	// BLOOMmod: Note that the event buffer is not copied
 }
 
 //////////////////////////////////////////////////////////

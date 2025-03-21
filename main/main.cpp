@@ -3624,6 +3624,7 @@ bool Main::iteration() {
 		physics_process_ticks = MAX(physics_process_ticks, OS::get_singleton()->get_ticks_usec() - physics_begin); // keep the largest one for reference
 		physics_process_max = MAX(OS::get_singleton()->get_ticks_usec() - physics_begin, physics_process_max);
 		Engine::get_singleton()->_physics_frames++;
+		Input::get_singleton()->_physics_frames++; // BLOOMmod: since Input doesn't query Engine, it needs to be synced
 
 		Engine::get_singleton()->_in_physics = false;
 	}
@@ -3671,6 +3672,7 @@ bool Main::iteration() {
 
 	frames++;
 	Engine::get_singleton()->_process_frames++;
+	Input::get_singleton()->_process_frames++; // BLOOMmod: since Input doesn't query Engine, it needs to be synced
 
 	if (frame > 1000000) {
 		// Wait a few seconds before printing FPS, as FPS reporting just after the engine has started is inaccurate.
