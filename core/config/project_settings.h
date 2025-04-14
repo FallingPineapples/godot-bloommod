@@ -144,7 +144,7 @@ protected:
 
 	void _add_property_info_bind(const Dictionary &p_info);
 
-	Error _setup(const String &p_path, const String &p_main_pack, bool p_upwards = false, bool p_ignore_override = false);
+	Error _setup(const String &p_path, const String &p_main_pack, bool p_upwards = false, bool p_ignore_override = false, bool p_first_phase = false);
 
 	void _add_builtin_input_map();
 

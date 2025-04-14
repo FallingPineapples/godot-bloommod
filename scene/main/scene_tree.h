@@ -409,8 +409,10 @@ public:
 	Ref<Tween> create_tween();
 	TypedArray<Tween> get_processed_tweens();
 
-	//used by Main::start, don't use otherwise
-	void add_current_scene(Node *p_current);
+	// BLOOMmod: setup a newly created SceneTree into a usable state
+	void setup(const String &p_local_game_path);
+	bool _setup(const String &p_local_game_path, bool p_real_globals);
+	bool _setup_scene(const String &p_local_game_path);
 
 	static SceneTree *get_singleton() { return singleton; }
 

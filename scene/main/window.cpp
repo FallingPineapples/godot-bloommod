@@ -1231,6 +1231,7 @@ void Window::_notification(int p_what) {
 					// It's the root window!
 					visible = true; // Always visible.
 					window_id = DisplayServer::MAIN_WINDOW_ID;
+					bool is_real_root = DisplayServer::get_singleton()->window_get_attached_instance_id(window_id).is_null();
 					DisplayServer::get_singleton()->window_attach_instance_id(get_instance_id(), window_id);
 					_update_from_window();
 					// Since this window already exists (created on start), we must update pos and size from it.
@@ -1241,7 +1242,11 @@ void Window::_notification(int p_what) {
 					}
 					_update_window_size(); // Inform DisplayServer of minimum and maximum size.
 					_update_viewport_size(); // Then feed back to the viewport.
-					_update_window_callbacks();
+					if (is_real_root) {
+						// BLOOMmod: Real root must keep callbacks
+						// TODO(BLOOMmod): Refactor this to make this saner
+						_update_window_callbacks();
+					}
 					RS::get_singleton()->viewport_set_update_mode(get_viewport_rid(), RS::VIEWPORT_UPDATE_WHEN_VISIBLE);
 				} else {
 					// Create.
@@ -1330,7 +1335,8 @@ void Window::_notification(int p_what) {
 			if (!is_embedded() && window_id != DisplayServer::INVALID_WINDOW_ID) {
 				if (window_id == DisplayServer::MAIN_WINDOW_ID) {
 					RS::get_singleton()->viewport_set_update_mode(get_viewport_rid(), RS::VIEWPORT_UPDATE_DISABLED);
-					_update_window_callbacks();
+					// BLOOMmod: real root must keep callbacks
+					// _update_window_callbacks();
 				} else {
 					_clear_window();
 				}

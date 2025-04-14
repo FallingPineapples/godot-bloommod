@@ -3030,7 +3030,11 @@ bool Main::start() {
 #endif // TOOLS_ENABLED
 
 	if (script.is_empty() && game_path.is_empty() && String(GLOBAL_GET("application/run/main_scene")) != "") {
-		game_path = GLOBAL_GET("application/run/main_scene");
+		if (String(GLOBAL_GET("application/run/main_scene_override")).is_empty()) {
+			game_path = GLOBAL_GET("application/run/main_scene");
+		} else {
+			game_path = GLOBAL_GET("application/run/main_scene_override");
+		}
 	}
 
 #ifdef TOOLS_ENABLED
@@ -3165,78 +3169,6 @@ bool Main::start() {
 		ResourceLoader::add_custom_loaders();
 		ResourceSaver::add_custom_savers();
 
-		if (!project_manager && !editor) { // game
-			if (!game_path.is_empty() || !script.is_empty()) {
-				//autoload
-				OS::get_singleton()->benchmark_begin_measure("load_autoloads");
-				HashMap<StringName, ProjectSettings::AutoloadInfo> autoloads = ProjectSettings::get_singleton()->get_autoload_list();
-
-				//first pass, add the constants so they exist before any script is loaded
-				for (const KeyValue<StringName, ProjectSettings::AutoloadInfo> &E : autoloads) {
-					const ProjectSettings::AutoloadInfo &info = E.value;
-
-					if (info.is_singleton) {
-						for (int i = 0; i < ScriptServer::get_language_count(); i++) {
-							ScriptServer::get_language(i)->add_global_constant(info.name, Variant());
-						}
-					}
-				}
-
-				//second pass, load into global constants
-				List<Node *> to_add;
-				for (const KeyValue<StringName, ProjectSettings::AutoloadInfo> &E : autoloads) {
-					const ProjectSettings::AutoloadInfo &info = E.value;
-
-					Node *n = nullptr;
-					if (ResourceLoader::get_resource_type(info.path) == "PackedScene") {
-						// Cache the scene reference before loading it (for cyclic references)
-						Ref<PackedScene> scn;
-						scn.instantiate();
-						scn->set_path(info.path);
-						scn->reload_from_file();
-						ERR_CONTINUE_MSG(!scn.is_valid(), vformat("Failed to instantiate an autoload, can't load from path: %s.", info.path));
-
-						if (scn.is_valid()) {
-							n = scn->instantiate();
-						}
-					} else {
-						Ref<Resource> res = ResourceLoader::load(info.path);
-						ERR_CONTINUE_MSG(res.is_null(), vformat("Failed to instantiate an autoload, can't load from path: %s.", info.path));
-
-						Ref<Script> script_res = res;
-						if (script_res.is_valid()) {
-							StringName ibt = script_res->get_instance_base_type();
-							bool valid_type = ClassDB::is_parent_class(ibt, "Node");
-							ERR_CONTINUE_MSG(!valid_type, vformat("Failed to instantiate an autoload, script '%s' does not inherit from 'Node'.", info.path));
-
-							Object *obj = ClassDB::instantiate(ibt);
-							ERR_CONTINUE_MSG(!obj, vformat("Failed to instantiate an autoload, cannot instantiate '%s'.", ibt));
-
-							n = Object::cast_to<Node>(obj);
-							n->set_script(script_res);
-						}
-					}
-
-					ERR_CONTINUE_MSG(!n, vformat("Failed to instantiate an autoload, path is not pointing to a scene or a script: %s.", info.path));
-					n->set_name(info.name);
-
-					//defer so references are all valid on _ready()
-					to_add.push_back(n);
-
-					if (info.is_singleton) {
-						for (int i = 0; i < ScriptServer::get_language_count(); i++) {
-							ScriptServer::get_language(i)->add_global_constant(info.name, n);
-						}
-					}
-				}
-
-				for (Node *E : to_add) {
-					sml->get_root()->add_child(E);
-				}
-				OS::get_singleton()->benchmark_end_measure("load_autoloads");
-			}
-		}
-
 #ifdef TOOLS_ENABLED
 #ifdef MODULE_GDSCRIPT_ENABLED
 		if (!doc_tool_path.is_empty() && !gdscript_docs_path.is_empty()) {
@@ -3282,79 +3214,7 @@ bool Main::start() {
 			}
 
 			OS::get_singleton()->benchmark_end_measure("editor");
-		}
-#endif
-		sml->set_auto_accept_quit(GLOBAL_GET("application/config/auto_accept_quit"));
-		sml->set_quit_on_go_back(GLOBAL_GET("application/config/quit_on_go_back"));
 
-		if (!editor && !project_manager) {
-			//standard helpers that can be changed from main config
-
-			String stretch_mode = GLOBAL_GET("display/window/stretch/mode");
-			String stretch_aspect = GLOBAL_GET("display/window/stretch/aspect");
-			Size2i stretch_size = Size2i(GLOBAL_GET("display/window/size/viewport_width"),
-					GLOBAL_GET("display/window/size/viewport_height"));
-			real_t stretch_scale = GLOBAL_GET("display/window/stretch/scale");
-			String stretch_scale_mode = GLOBAL_GET("display/window/stretch/scale_mode");
-
-			Window::ContentScaleMode cs_sm = Window::CONTENT_SCALE_MODE_DISABLED;
-			if (stretch_mode == "canvas_items") {
-				cs_sm = Window::CONTENT_SCALE_MODE_CANVAS_ITEMS;
-			} else if (stretch_mode == "viewport") {
-				cs_sm = Window::CONTENT_SCALE_MODE_VIEWPORT;
-			}
-
-			Window::ContentScaleAspect cs_aspect = Window::CONTENT_SCALE_ASPECT_IGNORE;
-			if (stretch_aspect == "keep") {
-				cs_aspect = Window::CONTENT_SCALE_ASPECT_KEEP;
-			} else if (stretch_aspect == "keep_width") {
-				cs_aspect = Window::CONTENT_SCALE_ASPECT_KEEP_WIDTH;
-			} else if (stretch_aspect == "keep_height") {
-				cs_aspect = Window::CONTENT_SCALE_ASPECT_KEEP_HEIGHT;
-			} else if (stretch_aspect == "expand") {
-				cs_aspect = Window::CONTENT_SCALE_ASPECT_EXPAND;
-			}
-
-			Window::ContentScaleStretch cs_stretch = Window::CONTENT_SCALE_STRETCH_FRACTIONAL;
-			if (stretch_scale_mode == "integer") {
-				cs_stretch = Window::CONTENT_SCALE_STRETCH_INTEGER;
-			}
-
-			sml->get_root()->set_content_scale_mode(cs_sm);
-			sml->get_root()->set_content_scale_aspect(cs_aspect);
-			sml->get_root()->set_content_scale_stretch(cs_stretch);
-			sml->get_root()->set_content_scale_size(stretch_size);
-			sml->get_root()->set_content_scale_factor(stretch_scale);
-
-			sml->set_auto_accept_quit(GLOBAL_GET("application/config/auto_accept_quit"));
-			sml->set_quit_on_go_back(GLOBAL_GET("application/config/quit_on_go_back"));
-			String appname = GLOBAL_GET("application/config/name");
-			appname = TranslationServer::get_singleton()->translate(appname);
-#ifdef DEBUG_ENABLED
-			// Append a suffix to the window title to denote that the project is running
-			// from a debug build (including the editor). Since this results in lower performance,
-			// this should be clearly presented to the user.
-			DisplayServer::get_singleton()->window_set_title(vformat("%s (DEBUG)", appname));
-#else
-			DisplayServer::get_singleton()->window_set_title(appname);
-#endif
-
-			bool snap_controls = GLOBAL_GET("gui/common/snap_controls_to_pixels");
-			sml->get_root()->set_snap_controls_to_pixels(snap_controls);
-
-			bool font_oversampling = GLOBAL_GET("gui/fonts/dynamic_fonts/use_oversampling");
-			sml->get_root()->set_use_font_oversampling(font_oversampling);
-
-			int texture_filter = GLOBAL_GET("rendering/textures/canvas_textures/default_texture_filter");
-			int texture_repeat = GLOBAL_GET("rendering/textures/canvas_textures/default_texture_repeat");
-			sml->get_root()->set_default_canvas_item_texture_filter(
-					Viewport::DefaultCanvasItemTextureFilter(texture_filter));
-			sml->get_root()->set_default_canvas_item_texture_repeat(
-					Viewport::DefaultCanvasItemTextureRepeat(texture_repeat));
-		}
-
-#ifdef TOOLS_ENABLED
-		if (editor) {
 			bool editor_embed_subwindows = EditorSettings::get_singleton()->get_setting(
 					"interface/editor/single_window_mode");
 
@@ -3396,44 +3256,47 @@ bool Main::start() {
 			}
 
 			local_game_path = ProjectSettings::get_singleton()->localize_path(local_game_path);
-
-#ifdef TOOLS_ENABLED
-			if (editor) {
-				if (game_path != String(GLOBAL_GET("application/run/main_scene")) || !editor_node->has_scenes_in_session()) {
-					Error serr = editor_node->load_scene(local_game_path);
-					if (serr != OK) {
-						ERR_PRINT("Failed to load scene");
-					}
-				}
-				DisplayServer::get_singleton()->set_context(DisplayServer::CONTEXT_EDITOR);
-				if (!debug_server_uri.is_empty()) {
-					EditorDebuggerNode::get_singleton()->start(debug_server_uri);
-					EditorDebuggerNode::get_singleton()->set_keep_open(true);
-				}
-			}
-#endif
-			if (!editor) {
-				DisplayServer::get_singleton()->set_context(DisplayServer::CONTEXT_ENGINE);
-			}
 		}
 
 		if (!project_manager && !editor) { // game
+			String appname = GLOBAL_GET("application/config/name");
+			appname = TranslationServer::get_singleton()->translate(appname);
+#ifdef DEBUG_ENABLED
+			// Append a suffix to the window title to denote that the project is running
+			// from a debug build (including the editor). Since this results in lower performance,
+			// this should be clearly presented to the user.
+			DisplayServer::get_singleton()->window_set_title(vformat("%s (DEBUG)", appname));
+#else
+			DisplayServer::get_singleton()->window_set_title(appname);
+#endif
 
-			OS::get_singleton()->benchmark_begin_measure("game_load");
+			// OS::get_singleton()->benchmark_begin_measure("game_load");
+			//autoload
+			// OS::get_singleton()->benchmark_begin_measure("load_autoloads");
+			HashMap<StringName, ProjectSettings::AutoloadInfo> autoloads = ProjectSettings::get_singleton()->get_autoload_list();
 
-			// Load SSL Certificates from Project Settings (or builtin).
-			Crypto::load_default_certificates(GLOBAL_GET("network/tls/certificate_bundle_override"));
+			//first pass, add the constants so they exist before any script is loaded
+			for (const KeyValue<StringName, ProjectSettings::AutoloadInfo> &E : autoloads) {
+				const ProjectSettings::AutoloadInfo &info = E.value;
+
+				if (info.is_singleton) {
+					for (int i = 0; i < ScriptServer::get_language_count(); i++) {
+						ScriptServer::get_language(i)->add_global_constant(info.name, Variant());
+					}
+				}
+			}
+
+			if (String(GLOBAL_GET("application/run/main_scene_override")).is_empty()) {
+				if (!sml->_setup(local_game_path, true)) {
+					return false;
+				}
+			} else {
+				if (!sml->_setup_scene(local_game_path)) {
+					return false;
+				}
+			}
 
 			if (!game_path.is_empty()) {
-				Node *scene = nullptr;
-				Ref<PackedScene> scenedata = ResourceLoader::load(local_game_path);
-				if (scenedata.is_valid()) {
-					scene = scenedata->instantiate();
-				}
-
-				ERR_FAIL_NULL_V_MSG(scene, false, "Failed loading scene: " + local_game_path + ".");
-				sml->add_current_scene(scene);
-
 #ifdef MACOS_ENABLED
 				String mac_icon_path = GLOBAL_GET("application/config/macos_native_icon");
 				if (!mac_icon_path.is_empty()) {
@@ -3461,7 +3324,31 @@ bool Main::start() {
 				}
 			}
 
-			OS::get_singleton()->benchmark_end_measure("game_load");
+			// Load SSL Certificates from Project Settings (or builtin).
+			Crypto::load_default_certificates(GLOBAL_GET("network/tls/certificate_bundle_override"));
+
+			// OS::get_singleton()->benchmark_end_measure("game_load");
+		}
+
+		if (!game_path.is_empty() && !project_manager) {
+#ifdef TOOLS_ENABLED
+			if (editor) {
+				if (game_path != String(GLOBAL_GET("application/run/main_scene")) || !editor_node->has_scenes_in_session()) {
+					Error serr = editor_node->load_scene(local_game_path);
+					if (serr != OK) {
+						ERR_PRINT("Failed to load scene");
+					}
+				}
+				DisplayServer::get_singleton()->set_context(DisplayServer::CONTEXT_EDITOR);
+				if (!debug_server_uri.is_empty()) {
+					EditorDebuggerNode::get_singleton()->start(debug_server_uri);
+					EditorDebuggerNode::get_singleton()->set_keep_open(true);
+				}
+			}
+#endif
+			if (!editor) {
+				DisplayServer::get_singleton()->set_context(DisplayServer::CONTEXT_ENGINE);
+			}
 		}
 
 #ifdef TOOLS_ENABLED

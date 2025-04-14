@@ -1475,10 +1475,167 @@ void SceneTree::unload_current_scene() {
 	}
 }
 
-void SceneTree::add_current_scene(Node *p_current) {
-	ERR_FAIL_COND_MSG(!Thread::is_main_thread(), "Adding a current scene can only be done from the main thread.");
-	current_scene = p_current;
-	root->add_child(p_current);
+void SceneTree::setup(const String &p_local_game_path) {
+	MainLoop *prev_main_loop = Engine::get_singleton()->_main_loop;
+	bool prev_in_physics = Engine::get_singleton()->_in_physics;
+
+	Engine::get_singleton()->_main_loop = this;
+	Engine::get_singleton()->_in_physics = false;
+
+	_setup(p_local_game_path, false);
+
+	Engine::get_singleton()->_in_physics = prev_in_physics;
+	Engine::get_singleton()->_main_loop = prev_main_loop;
+}
+
+bool SceneTree::_setup(const String &p_local_game_path, bool p_real_globals) {
+	if (!p_real_globals) {
+		multiplayer_poll = false;
+		gdscript_global_array = GDScriptLanguage::get_singleton()->get_global_array_vector();
+	}
+
+	HashMap<StringName, ProjectSettings::AutoloadInfo> autoloads = ProjectSettings::get_singleton()->get_autoload_list();
+
+	//second pass, load into global constants
+	List<Node *> to_add;
+	for (const KeyValue<StringName, ProjectSettings::AutoloadInfo> &E : autoloads) {
+		const ProjectSettings::AutoloadInfo &info = E.value;
+
+		Node *n = nullptr;
+		if (ResourceLoader::get_resource_type(info.path) == "PackedScene") {
+			// Cache the scene reference before loading it (for cyclic references)
+			Ref<PackedScene> scn;
+			scn.instantiate();
+			scn->set_path(info.path);
+			scn->reload_from_file();
+			ERR_CONTINUE_MSG(!scn.is_valid(), vformat("Failed to instantiate an autoload, can't load from path: %s.", info.path));
+
+			if (scn.is_valid()) {
+				n = scn->instantiate();
+			}
+		} else {
+			Ref<Resource> res = ResourceLoader::load(info.path);
+			ERR_CONTINUE_MSG(res.is_null(), vformat("Failed to instantiate an autoload, can't load from path: %s.", info.path));
+
+			Ref<Script> script_res = res;
+			if (script_res.is_valid()) {
+				StringName ibt = script_res->get_instance_base_type();
+				bool valid_type = ClassDB::is_parent_class(ibt, "Node");
+				ERR_CONTINUE_MSG(!valid_type, vformat("Failed to instantiate an autoload, script '%s' does not inherit from 'Node'.", info.path));
+
+				Object *obj = ClassDB::instantiate(ibt);
+				ERR_CONTINUE_MSG(!obj, vformat("Failed to instantiate an autoload, cannot instantiate '%s'.", ibt));
+
+				n = Object::cast_to<Node>(obj);
+				n->set_script(script_res);
+			}
+		}
+
+		ERR_CONTINUE_MSG(!n, vformat("Failed to instantiate an autoload, path is not pointing to a scene or a script: %s.", info.path));
+		n->set_name(info.name);
+
+		//defer so references are all valid on _ready()
+		to_add.push_back(n);
+
+		if (info.is_singleton) {
+			if (p_real_globals) {
+				for (int i = 0; i < ScriptServer::get_language_count(); i++) {
+					ScriptServer::get_language(i)->add_global_constant(info.name, n);
+				}
+			} else {
+				int idx = GDScriptLanguage::get_singleton()->get_global_map()[info.name];
+				gdscript_global_array.write[idx] = n;
+			}
+		}
+	}
+
+	for (Node *E : to_add) {
+		root->add_child(E);
+	}
+	// OS::get_singleton()->benchmark_end_measure("load_autoloads");
+
+	//standard helpers that can be changed from main config
+
+	String stretch_mode = GLOBAL_GET("display/window/stretch/mode");
+	String stretch_aspect = GLOBAL_GET("display/window/stretch/aspect");
+	Size2i stretch_size = Size2i(GLOBAL_GET("display/window/size/viewport_width"),
+			GLOBAL_GET("display/window/size/viewport_height"));
+	real_t stretch_scale = GLOBAL_GET("display/window/stretch/scale");
+	String stretch_scale_mode = GLOBAL_GET("display/window/stretch/scale_mode");
+
+	Window::ContentScaleMode cs_sm = Window::CONTENT_SCALE_MODE_DISABLED;
+	if (stretch_mode == "canvas_items") {
+		cs_sm = Window::CONTENT_SCALE_MODE_CANVAS_ITEMS;
+	} else if (stretch_mode == "viewport") {
+		cs_sm = Window::CONTENT_SCALE_MODE_VIEWPORT;
+	}
+
+	Window::ContentScaleAspect cs_aspect = Window::CONTENT_SCALE_ASPECT_IGNORE;
+	if (stretch_aspect == "keep") {
+		cs_aspect = Window::CONTENT_SCALE_ASPECT_KEEP;
+	} else if (stretch_aspect == "keep_width") {
+		cs_aspect = Window::CONTENT_SCALE_ASPECT_KEEP_WIDTH;
+	} else if (stretch_aspect == "keep_height") {
+		cs_aspect = Window::CONTENT_SCALE_ASPECT_KEEP_HEIGHT;
+	} else if (stretch_aspect == "expand") {
+		cs_aspect = Window::CONTENT_SCALE_ASPECT_EXPAND;
+	}
+
+	Window::ContentScaleStretch cs_stretch = Window::CONTENT_SCALE_STRETCH_FRACTIONAL;
+	if (stretch_scale_mode == "integer") {
+		cs_stretch = Window::CONTENT_SCALE_STRETCH_INTEGER;
+	}
+
+	root->set_content_scale_mode(cs_sm);
+	root->set_content_scale_aspect(cs_aspect);
+	root->set_content_scale_stretch(cs_stretch);
+	root->set_content_scale_size(stretch_size);
+	root->set_content_scale_factor(stretch_scale);
+
+	set_auto_accept_quit(GLOBAL_GET("application/config/auto_accept_quit"));
+	set_quit_on_go_back(GLOBAL_GET("application/config/quit_on_go_back"));
+
+	bool snap_controls = GLOBAL_GET("gui/common/snap_controls_to_pixels");
+	root->set_snap_controls_to_pixels(snap_controls);
+
+	bool font_oversampling = GLOBAL_GET("gui/fonts/dynamic_fonts/use_oversampling");
+	root->set_use_font_oversampling(font_oversampling);
+
+	int texture_filter = GLOBAL_GET("rendering/textures/canvas_textures/default_texture_filter");
+	int texture_repeat = GLOBAL_GET("rendering/textures/canvas_textures/default_texture_repeat");
+	root->set_default_canvas_item_texture_filter(
+			Viewport::DefaultCanvasItemTextureFilter(texture_filter));
+	root->set_default_canvas_item_texture_repeat(
+			Viewport::DefaultCanvasItemTextureRepeat(texture_repeat));
+
+	if (!_setup_scene(p_local_game_path)) {
+		return false;
+	}
+
+	if (!p_real_globals) {
+		int input_idx = GDScriptLanguage::get_singleton()->get_global_map()[StringName("Input")];
+		gdscript_global_array.write[input_idx] = memnew(Input);
+		initialize();
+	}
+
+	return true;
+}
+
+bool SceneTree::_setup_scene(const String &p_local_game_path) {
+	if (!p_local_game_path.is_empty()) {
+		Node *scene = nullptr;
+		Ref<PackedScene> scenedata = ResourceLoader::load(p_local_game_path);
+		if (scenedata.is_valid()) {
+			scene = scenedata->instantiate();
+		}
+
+		ERR_FAIL_NULL_V_MSG(scene, false, "Failed loading scene: " + p_local_game_path + ".");
+		// ERR_FAIL_COND_MSG(!Thread::is_main_thread(), "Adding a current scene can only be done from the main thread.");
+		current_scene = scene;
+		root->add_child(scene);
+	}
+
+	return true;
 }
 
 Ref<SceneTreeTimer> SceneTree::create_timer(double p_delay_sec, bool p_process_always, bool p_process_in_physics, bool p_ignore_time_scale) {
@@ -1706,6 +1863,9 @@ void SceneTree::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("reload_current_scene"), &SceneTree::reload_current_scene);
 	ClassDB::bind_method(D_METHOD("unload_current_scene"), &SceneTree::unload_current_scene);
+
+	// BLOOMmod: needed to create a fresh savestate
+	ClassDB::bind_method(D_METHOD("setup", "local_game_path"), &SceneTree::setup);
 
 	ClassDB::bind_method(D_METHOD("set_multiplayer", "multiplayer", "root_path"), &SceneTree::set_multiplayer, DEFVAL(NodePath()));
 	ClassDB::bind_method(D_METHOD("get_multiplayer", "for_path"), &SceneTree::get_multiplayer, DEFVAL(NodePath()));
@@ -1999,7 +2159,6 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 	}
 	root = Object::cast_to<Window>(p_from.root->duplicate(Node::DUPLICATE_GROUPS | Node::DUPLICATE_SIGNALS | Node::DUPLICATE_SCRIPTS | Node::DUPLICATE_INTERNAL_STATE));
 	ERR_FAIL_NULL(root);
-	// TODO(BLOOMmod): root close_requested signal
 	multiplayer_poll = false;
 	root->_set_tree(this);
 	if (p_from.current_scene) {

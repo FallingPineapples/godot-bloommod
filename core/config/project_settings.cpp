@@ -535,8 +535,27 @@ void ProjectSettings::_convert_to_last_version(int p_from_version) {
  *    from command line while in a subfolder).
  *    If a project file is found, load it or fail.
  *    If nothing was found, error out.
+ *
+ * BLOOMmod needs to load two files, so this method is called twice.
+ *  - With p_first_phase set, it will also
+ *    o Prepend `bloommod_` to all attempted `*.pck` files
+ *    o Keep going if `p_main_pack` fails
+ *    o Never search upward, regardless of `p_upward`
+ *  - Otherwise, it will also
+ *    o Not attempt loading a bundled PCK
  */
-Error ProjectSettings::_setup(const String &p_path, const String &p_main_pack, bool p_upwards, bool p_ignore_override) {
+Error ProjectSettings::_setup(const String &p_path, const String &p_main_pack, bool p_upwards, bool p_ignore_override, bool p_first_phase) {
+	// BLOOMmod: This controls if `_load_resource_pack` will consider using `PackedSourceDirectory`.
+	// It should only consider doing so in the second phase, and only if `resource_path` was set by the first.
+	bool is_main_pack = (p_first_phase || resource_path.is_empty());
+
+	// BLOOMmod data pcks are prefixed with `bloommod_`
+	// TODO(BLOOMmod): Might `exec_name` start with `bloommod_`?
+	String pck_prefix = "";
+	if (p_first_phase) {
+		pck_prefix = "bloommod_";
+	}
+
 	if (!OS::get_singleton()->get_resource_dir().is_empty()) {
 		// OS will call ProjectSettings->get_resource_path which will be empty if not overridden!
 		// If the OS would rather use a specific location, then it will not be empty.
@@ -549,16 +568,22 @@ Error ProjectSettings::_setup(const String &p_path, const String &p_main_pack, b
 	// Attempt with a user-defined main pack first
 
 	if (!p_main_pack.is_empty()) {
-		bool ok = _load_resource_pack(p_main_pack, false, 0, true);
-		ERR_FAIL_COND_V_MSG(!ok, ERR_CANT_OPEN, "Cannot open resource pack '" + p_main_pack + "'.");
-
-		Error err = _load_settings_text_or_binary("res://project.godot", "res://project.binary");
-		if (err == OK && !p_ignore_override) {
-			// Load override from location of the main pack
-			// Optional, we don't mind if it fails
-			_load_settings_text(p_main_pack.get_base_dir().path_join("override.cfg"));
+		String main_pack = p_main_pack;
+		if (p_first_phase) {
+			main_pack = main_pack.get_base_dir().path_join(pck_prefix + main_pack.get_file());
 		}
-		return err;
+		bool ok = _load_resource_pack(main_pack, true, 0, is_main_pack);
+		if (ok) {
+			Error err = _load_settings_text_or_binary("res://project.godot", "res://project.binary");
+			if (err == OK && !p_ignore_override) {
+				// Load override from location of the main pack
+				// Optional, we don't mind if it fails
+				_load_settings_text(main_pack.get_base_dir().path_join("override.cfg"));
+			}
+			return err;
+		} else {
+			ERR_FAIL_COND_V_MSG(!p_first_phase, ERR_CANT_OPEN, "Cannot open resource pack '" + main_pack + "'.");
+		}
 	}
 
 	String exec_path = OS::get_singleton()->get_executable_path();
@@ -568,7 +593,10 @@ Error ProjectSettings::_setup(const String &p_path, const String &p_main_pack, b
 		// and if so, we attempt loading it at the end.
 
 		// Attempt with PCK bundled into executable.
-		bool found = _load_resource_pack(exec_path, false, 0, true);
+		bool found = false;
+		if (p_first_phase) {
+			found = _load_resource_pack(exec_path, true, 0, is_main_pack);
+		}
 
 		// Attempt with exec_name.pck.
 		// (This is the usual case when distributing a Godot game.)
@@ -584,20 +612,20 @@ Error ProjectSettings::_setup(const String &p_path, const String &p_main_pack, b
 #ifdef MACOS_ENABLED
 		if (!found) {
 			// Attempt to load PCK from macOS .app bundle resources.
-			found = _load_resource_pack(OS::get_singleton()->get_bundle_resource_dir().path_join(exec_basename + ".pck"), false, 0, true) || _load_resource_pack(OS::get_singleton()->get_bundle_resource_dir().path_join(exec_filename + ".pck"), false, 0, true);
+			found = _load_resource_pack(OS::get_singleton()->get_bundle_resource_dir().path_join(pck_prefix + exec_basename + ".pck"), true, 0, is_main_pack) || _load_resource_pack(OS::get_singleton()->get_bundle_resource_dir().path_join(pck_prefix + exec_filename + ".pck"), true, 0, is_main_pack);
 		}
 #endif
 
 		if (!found) {
 			// Try to load data pack at the location of the executable.
 			// As mentioned above, we have two potential names to attempt.
-			found = _load_resource_pack(exec_dir.path_join(exec_basename + ".pck"), false, 0, true) || _load_resource_pack(exec_dir.path_join(exec_filename + ".pck"), false, 0, true);
+			found = _load_resource_pack(exec_dir.path_join(pck_prefix + exec_basename + ".pck"), true, 0, is_main_pack) || _load_resource_pack(exec_dir.path_join(pck_prefix + exec_filename + ".pck"), true, 0, is_main_pack);
 		}
 
 		if (!found) {
 			// If we couldn't find them next to the executable, we attempt
 			// the current working directory. Same story, two tests.
-			found = _load_resource_pack(exec_basename + ".pck", false, 0, true) || _load_resource_pack(exec_filename + ".pck", false, 0, true);
+			found = _load_resource_pack(pck_prefix + exec_basename + ".pck", true, 0, is_main_pack) || _load_resource_pack(pck_prefix + exec_filename + ".pck", true, 0, is_main_pack);
 		}
 
 		// If we opened our package, try and load our project.
@@ -648,7 +676,7 @@ Error ProjectSettings::_setup(const String &p_path, const String &p_main_pack, b
 			break;
 		}
 
-		if (p_upwards) {
+		if (p_upwards && !p_first_phase) {
 			// Try to load settings ascending through parent directories
 			d->change_dir("..");
 			if (d->get_current_dir() == current_dir) {
@@ -661,6 +689,10 @@ Error ProjectSettings::_setup(const String &p_path, const String &p_main_pack, b
 	}
 
 	if (!found) {
+		if (p_first_phase) {
+			// BLOOMmod: A failed first phase should try to avoid side effects.
+			resource_path = "";
+		}
 		return err;
 	}
 
@@ -672,7 +704,20 @@ Error ProjectSettings::_setup(const String &p_path, const String &p_main_pack, b
 }
 
 Error ProjectSettings::setup(const String &p_path, const String &p_main_pack, bool p_upwards, bool p_ignore_override) {
-	Error err = _setup(p_path, p_main_pack, p_upwards, p_ignore_override);
+	Error err = _setup(p_path, p_main_pack, p_upwards, p_ignore_override, !p_ignore_override);
+	if (!p_ignore_override) {
+		if (err == OK && String(GLOBAL_GET("application/run/main_scene_override")).is_empty()) {
+			// BLOOMmod: The loaded pck is not a bloommod pck.
+			// If p_main_pack is not specified, we can fallback to running it unmodded.
+			// Otherwise, we cannot continue; the wrong data is loaded.
+			if (!p_main_pack.is_empty()) {
+				err = ERR_CANT_OPEN;
+			}
+		} else {
+			err = _setup(p_path, p_main_pack, p_upwards, p_ignore_override, false);
+		}
+	}
+
 	if (err == OK && !p_ignore_override) {
 		String custom_settings = GLOBAL_GET("application/config/project_settings_override");
 		if (!custom_settings.is_empty()) {
@@ -1320,6 +1365,8 @@ ProjectSettings::ProjectSettings() {
 	GLOBAL_DEF_BASIC("application/config/version", "");
 	GLOBAL_DEF_INTERNAL(PropertyInfo(Variant::STRING, "application/config/tags"), PackedStringArray());
 	GLOBAL_DEF_BASIC(PropertyInfo(Variant::STRING, "application/run/main_scene", PROPERTY_HINT_FILE, "*.tscn,*.scn,*.res"), "");
+	// BLOOMmod: Main bloommod scene; controls savestates. Also used to detect if a bloommod pck has been loaded.
+	GLOBAL_DEF(PropertyInfo(Variant::STRING, "application/run/main_scene_override", PROPERTY_HINT_FILE, "*.tscn,*.scn,*.res"), "");
 	GLOBAL_DEF("application/run/disable_stdout", false);
 	GLOBAL_DEF("application/run/disable_stderr", false);
 	GLOBAL_DEF_RST("application/config/use_hidden_project_data_directory", true);

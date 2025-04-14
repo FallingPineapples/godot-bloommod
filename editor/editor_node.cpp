@@ -5534,6 +5534,12 @@ bool EditorNode::has_scenes_in_session() {
 
 bool EditorNode::ensure_main_scene(bool p_from_native) {
 	pick_main_scene->set_meta("from_native", p_from_native); // Whether from play button or native run.
+
+	// BLOOMmod: We assume it exists, since we may not have access in the editor.
+	if (!String(GLOBAL_GET("application/run/main_scene_override")).is_empty()) {
+		return true;
+	}
+
 	String main_scene = GLOBAL_GET("application/run/main_scene");
 
 	if (main_scene.is_empty()) {

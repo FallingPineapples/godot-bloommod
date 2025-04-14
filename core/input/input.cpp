@@ -1689,7 +1689,9 @@ bool Input::is_input_disabled() const {
 }
 
 Input::Input() {
-	singleton = this;
+	if (singleton == nullptr) {
+		singleton = this;
+	}
 
 	// Parse default mappings.
 	{
