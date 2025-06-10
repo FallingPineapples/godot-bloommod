@@ -34,6 +34,7 @@
 #include "core/io/resource.h"
 #include "core/object/class_db.h"
 #include "core/object/ref_counted.h"
+#include <functional>
 
 class PhysicsDirectSpaceState2D;
 template <typename T>
@@ -283,6 +284,11 @@ public:
 		ERR_PRINT("not implemented"); // TODO(BLOOMmod): better error message
 	};
 	virtual void space_step(RID p_space, real_t p_step) {
+		ERR_PRINT("not implemented");
+	};
+
+	// BLOOMmod: savestate control
+	virtual void space_duplicate_internal_state(RID p_space, std::function<RID(ObjectID)> p_map_fn) {
 		ERR_PRINT("not implemented");
 	};
 

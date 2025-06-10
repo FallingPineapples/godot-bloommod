@@ -35,6 +35,7 @@
 
 #include "core/templates/self_list.h"
 #include "servers/physics_server_2d.h"
+#include <functional>
 
 class GodotSpace2D;
 class GodotBody2D;
@@ -151,6 +152,9 @@ public:
 	void call_queries();
 
 	void compute_gravity(const Vector2 &p_position, Vector2 &r_gravity) const;
+
+	// BLOOMmod: for savestates
+	void duplicate_internal_state(std::function<GodotCollisionObject2D*(ObjectID)> p_map_fn);
 
 	GodotArea2D();
 	~GodotArea2D();

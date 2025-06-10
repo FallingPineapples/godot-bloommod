@@ -304,6 +304,30 @@ void GodotPhysicsServer2D::space_step(RID p_space, real_t p_step) {
 	stepper->step(space, p_step);
 }
 
+// BLOOMmod: savestate control implementation
+void GodotPhysicsServer2D::space_duplicate_internal_state(RID p_space, std::function<RID(ObjectID)> p_map_fn) {
+	GodotSpace2D *space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL(space);
+	HashSet<GodotCollisionObject2D*>::Iterator iterator = space->get_objects().begin();
+	std::function<GodotCollisionObject2D*(ObjectID)> map_fn = [&](ObjectID p_instance_id) -> GodotCollisionObject2D* {
+		RID rid = p_map_fn(p_instance_id);
+		if (rid.is_null()) return nullptr;
+		if (area_owner.owns(rid)) {
+			return area_owner.get_or_null(rid);
+		} else {
+			ERR_FAIL_COND_V(!body_owner.owns(rid), nullptr);
+			return body_owner.get_or_null(rid);
+		}
+	};
+	while (iterator) {
+		GodotCollisionObject2D *object = *iterator;
+		if (object->get_type() == GodotCollisionObject2D::TYPE_AREA) {
+			static_cast<GodotArea2D*>(object)->duplicate_internal_state(map_fn);
+		}
+		++iterator;
+	}
+}
+
 void GodotPhysicsServer2D::area_set_space(RID p_area, RID p_space) {
 	GodotArea2D *area = area_owner.get_or_null(p_area);
 	ERR_FAIL_NULL(area);

@@ -303,6 +303,33 @@ void GodotArea2D::compute_gravity(const Vector2 &p_position, Vector2 &r_gravity)
 	}
 }
 
+// BLOOMmod: required for savestates
+void GodotArea2D::duplicate_internal_state(std::function<GodotCollisionObject2D*(ObjectID)> p_map_fn) {
+	GodotArea2D *from = dynamic_cast<GodotArea2D*>(p_map_fn(get_instance_id()));
+	ERR_FAIL_NULL(from);
+	for (GodotConstraint2D *constraint : constraints) {
+		constraint->setup(0.); // TODO(BLOOMmod): do this more properly
+	}
+	monitored_bodies.clear();
+	monitored_areas.clear();
+	for (HashMap<BodyKey, BodyState, BodyKey>::Iterator E = from->monitored_bodies.begin(); E; ++E) {
+		GodotCollisionObject2D *other = p_map_fn(E->key.instance_id);
+		ERR_CONTINUE(!other);
+		BodyKey bk = E->key;
+		bk.rid = other->get_self();
+		bk.instance_id = other->get_instance_id();
+		monitored_bodies[bk].state = E->value.state;
+	}
+	for (HashMap<BodyKey, BodyState, BodyKey>::Iterator E = from->monitored_areas.begin(); E; ++E) {
+		GodotCollisionObject2D *other = p_map_fn(E->key.instance_id);
+		ERR_CONTINUE(!other);
+		BodyKey bk = E->key;
+		bk.rid = other->get_self();
+		bk.instance_id = other->get_instance_id();
+		monitored_areas[bk].state = E->value.state;
+	}
+}
+
 GodotArea2D::GodotArea2D() :
 		GodotCollisionObject2D(TYPE_AREA),
 		monitor_query_list(this),

@@ -74,6 +74,10 @@ void PhysicsServer2DWrapMT::space_step(RID p_space, real_t p_step) {
 	physics_server_2d->space_step(p_space, p_step);
 }
 
+void PhysicsServer2DWrapMT::space_duplicate_internal_state(RID p_space, std::function<RID(ObjectID)> p_map_fn) {
+	physics_server_2d->space_duplicate_internal_state(p_space, p_map_fn);
+}
+
 /* EVENT QUEUING */
 
 void PhysicsServer2DWrapMT::step(real_t p_step) {

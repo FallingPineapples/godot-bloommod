@@ -44,6 +44,7 @@
 #include "core/string/print_string.h"
 #include "modules/gdscript/gdscript.h"
 #include "node.h"
+#include "scene/2d/collision_object_2d.h"
 #include "scene/animation/tween.h"
 #include "scene/debugger/scene_debugger.h"
 #include "scene/gui/control.h"
@@ -2165,7 +2166,17 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 		current_scene = root->get_node(p_from.current_scene->get_path());
 	}
 	set_pause(p_from.is_paused());
-	// TODO(BLOOMmod): copy physics server state
+	PhysicsServer2D::get_singleton()->space_duplicate_internal_state(root->get_world_2d()->get_space(), [&](ObjectID p_instance_id) -> RID {
+		Node *old_node = Object::cast_to<Node>(ObjectDB::get_instance(p_instance_id));
+		if (!old_node) return RID();
+		if (!root->is_ancestor_of(old_node)) return RID();
+		NodePath path = root->get_path_to(old_node);
+		ERR_FAIL_COND_V(!p_from.root->has_node(path), RID());
+		CollisionObject2D *new_node = Object::cast_to<CollisionObject2D>(p_from.root->get_node(path));
+		// TODO(BLOOMmod): handle TileMaps
+		ERR_FAIL_NULL_V(new_node, RID());
+		return new_node->get_rid();
+	});
 	process_groups.push_back(&default_process_group);
 	HashMap<StringName, ProjectSettings::AutoloadInfo> autoloads = ProjectSettings::get_singleton()->get_autoload_list();
 	for (const KeyValue<StringName, ProjectSettings::AutoloadInfo> &E : autoloads) {

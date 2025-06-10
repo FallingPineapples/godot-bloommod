@@ -123,6 +123,9 @@ public:
 	virtual void space_flush_queries(RID p_space) override;
 	virtual void space_step(RID p_space, real_t p_step) override;
 
+	// BLOOMmod: savestate control
+	virtual void space_duplicate_internal_state(RID p_space, std::function<RID(ObjectID)> p_map_fn) override;
+
 	/* AREA API */
 
 	virtual RID area_create() override;
