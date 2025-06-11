@@ -96,6 +96,16 @@
 				[b]Note:[/b] When creating a [Tween] using this method, the [Tween] will not be tied to the [Node] that called it. It will continue to animate even if the [Node] is freed, but it will automatically finish if there's nothing left to animate. If you want the [Tween] to be automatically killed when the [Node] is freed, use [method Node.create_tween] or [method Tween.bind_node].
 			</description>
 		</method>
+		<method name="duplicate" qualifiers="const">
+			<return type="SceneTree" />
+			<description>
+			</description>
+		</method>
+		<method name="frame">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
 		<method name="get_first_node_in_group">
 			<return type="Node" />
 			<param index="0" name="group" type="StringName" />
@@ -107,6 +117,11 @@
 			<return type="int" />
 			<description>
 				Returns the current frame number, i.e. the total frame count since the application started.
+			</description>
+		</method>
+		<method name="get_input_object" qualifiers="const">
+			<return type="Input" />
+			<description>
 			</description>
 		</method>
 		<method name="get_multiplayer" qualifiers="const">
@@ -214,6 +229,12 @@
 			<description>
 				Sets a custom [MultiplayerAPI] with the given [param root_path] (controlling also the relative subpaths), or override the default one if [param root_path] is empty.
 				[b]Note:[/b] No [MultiplayerAPI] must be configured for the subpath containing [param root_path], nested custom multiplayers are not allowed. I.e. if one is configured for [code]"/root/Foo"[/code] setting one for [code]"/root/Foo/Bar"[/code] will cause an error.
+			</description>
+		</method>
+		<method name="setup">
+			<return type="void" />
+			<param index="0" name="local_game_path" type="String" />
+			<description>
 			</description>
 		</method>
 		<method name="unload_current_scene">

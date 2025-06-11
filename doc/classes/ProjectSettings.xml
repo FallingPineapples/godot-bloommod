@@ -351,6 +351,8 @@
 		<member name="application/run/main_scene" type="String" setter="" getter="" default="&quot;&quot;">
 			Path to the main scene file that will be loaded when the project runs.
 		</member>
+		<member name="application/run/main_scene_override" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
 		<member name="application/run/max_fps" type="int" setter="" getter="" default="0">
 			Maximum number of frames per second allowed. A value of [code]0[/code] means "no limit". The actual number of frames per second may still be below this value if the CPU or GPU cannot keep up with the project logic and rendering. See also [member physics/common/physics_ticks_per_second] and [member application/run/fixed_fps].
 			Limiting the FPS can be useful to reduce system power consumption, which reduces heat and noise emissions (and improves battery life on mobile devices).
