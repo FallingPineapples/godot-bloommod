@@ -128,8 +128,8 @@ private:
 	bool accept_quit = true;
 	bool quit_on_go_back = true;
 
-#ifdef DEBUG_ENABLED
 	bool debug_collisions_hint = false;
+#ifdef DEBUG_ENABLED
 	bool debug_paths_hint = false;
 	bool debug_navigation_hint = false;
 #endif
@@ -344,19 +344,16 @@ public:
 	void set_suspend(bool p_enabled);
 	bool is_suspended() const;
 
-#ifdef DEBUG_ENABLED
 	void set_debug_collisions_hint(bool p_enabled);
 	bool is_debugging_collisions_hint() const;
 
+#ifdef DEBUG_ENABLED
 	void set_debug_paths_hint(bool p_enabled);
 	bool is_debugging_paths_hint() const;
 
 	void set_debug_navigation_hint(bool p_enabled);
 	bool is_debugging_navigation_hint() const;
 #else
-	void set_debug_collisions_hint(bool p_enabled) {}
-	bool is_debugging_collisions_hint() const { return false; }
-
 	void set_debug_paths_hint(bool p_enabled) {}
 	bool is_debugging_paths_hint() const { return false; }
 

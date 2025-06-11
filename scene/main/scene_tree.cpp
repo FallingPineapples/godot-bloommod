@@ -722,7 +722,6 @@ bool SceneTree::is_node_being_edited(const Node *p_node) const {
 }
 #endif
 
-#ifdef DEBUG_ENABLED
 void SceneTree::set_debug_collisions_hint(bool p_enabled) {
 	debug_collisions_hint = p_enabled;
 }
@@ -731,6 +730,7 @@ bool SceneTree::is_debugging_collisions_hint() const {
 	return debug_collisions_hint;
 }
 
+#ifdef DEBUG_ENABLED
 void SceneTree::set_debug_paths_hint(bool p_enabled) {
 	debug_paths_hint = p_enabled;
 }
