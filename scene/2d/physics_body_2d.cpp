@@ -31,6 +31,7 @@
 #include "physics_body_2d.h"
 
 #include "scene/scene_string_names.h"
+#include "scene/2d/tile_map.h"
 
 void PhysicsBody2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("move_and_collide", "motion", "test_only", "safe_margin", "recovery_as_collision"), &PhysicsBody2D::_move, DEFVAL(false), DEFVAL(0.08), DEFVAL(false));
@@ -1714,13 +1715,51 @@ void CharacterBody2D::_duplicate_internal_state(Node *p_copy) const {
 	body->last_motion = last_motion;
 	body->previous_position = previous_position;
 	body->real_velocity = real_velocity;
-	// TODO(BLOOMmod): platform_rid
-	// TODO(BLOOMmod): platform_object_id
 	body->on_floor = on_floor;
 	body->on_ceiling = on_ceiling;
 	body->on_wall = on_wall;
-	// TODO(BLOOMmod): motion_results
-	// TODO(BLOOMmod): slide_colliders?
+	body->motion_results = motion_results;
+	for (int i = 0; i < motion_results.size(); ++i) {
+		Node *old_node = Object::cast_to<Node>(ObjectDB::get_instance(motion_results[i].collider_id));
+		if (!old_node) continue;
+		if (!old_node->is_inside_tree()) continue;
+		NodePath path = get_path_to(old_node);
+		ERR_CONTINUE(!body->has_node(path));
+		Node *new_node = body->get_node(path);
+		ERR_CONTINUE(!new_node);
+		body->motion_results.write[i].collider_id = new_node->get_instance_id();
+		CollisionObject2D *collision = Object::cast_to<CollisionObject2D>(new_node);
+		if (collision) {
+			body->motion_results.write[i].collider = collision->get_rid();
+		}
+		TileMap *tilemap = Object::cast_to<TileMap>(new_node);
+		if (tilemap) {
+			// TODO(BLOOMmod): collider RID
+			return;
+		}
+		ERR_CONTINUE(!collision);
+	}
+	{
+		Node *old_node = Object::cast_to<Node>(ObjectDB::get_instance(platform_object_id));
+		if (!old_node) return;
+		if (!old_node->is_inside_tree()) return;
+		NodePath path = get_path_to(old_node);
+		ERR_FAIL_COND(!body->has_node(path));
+		Node *new_node = body->get_node(path);
+		ERR_FAIL_NULL(new_node);
+		body->platform_object_id = new_node->get_instance_id();
+		CollisionObject2D *collision = Object::cast_to<CollisionObject2D>(new_node);
+		if (collision) {
+			body->platform_rid = collision->get_rid();
+			return;
+		}
+		TileMap *tilemap = Object::cast_to<TileMap>(new_node);
+		if (tilemap) {
+			// TODO(BLOOMmod): collider RID
+			return;
+		}
+		ERR_FAIL_NULL(collision);
+	}
 }
 
 void CharacterBody2D::_notification(int p_what) {
