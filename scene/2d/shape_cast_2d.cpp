@@ -220,7 +220,6 @@ void ShapeCast2D::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_DRAW: {
-#ifdef TOOLS_ENABLED
 			ERR_FAIL_COND(!is_inside_tree());
 			if (!Engine::get_singleton()->is_editor_hint() && !get_tree()->is_debugging_collisions_hint()) {
 				break;
@@ -271,7 +270,6 @@ void ShapeCast2D::_notification(int p_what) {
 
 				draw_primitive(pts, cols, Vector<Vector2>());
 			}
-#endif
 		} break;
 
 		case NOTIFICATION_INTERNAL_PHYSICS_PROCESS: {

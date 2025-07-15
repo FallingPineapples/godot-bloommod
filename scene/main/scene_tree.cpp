@@ -2161,6 +2161,7 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 	root = Object::cast_to<Window>(p_from.root->duplicate(Node::DUPLICATE_GROUPS | Node::DUPLICATE_SIGNALS | Node::DUPLICATE_SCRIPTS | Node::DUPLICATE_INTERNAL_STATE));
 	ERR_FAIL_NULL(root);
 	multiplayer_poll = false;
+	debug_collisions_color = p_from.debug_collisions_color;
 	root->_set_tree(this);
 	if (p_from.current_scene) {
 		current_scene = root->get_node(p_from.current_scene->get_path());
