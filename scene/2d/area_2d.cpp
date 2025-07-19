@@ -324,7 +324,7 @@ void Area2D::_area_inout(int p_status, const RID &p_area, ObjectID p_instance, i
 	unlock_callback();
 }
 
-void Area2D::_clear_monitoring() {
+void Area2D::_clear_monitoring(bool p_skip_signals) {
 	ERR_FAIL_COND_MSG(locked, "This function can't be used during the in/out signal.");
 
 	{
@@ -342,6 +342,8 @@ void Area2D::_clear_monitoring() {
 
 			node->disconnect(SceneStringNames::get_singleton()->tree_entered, callable_mp(this, &Area2D::_body_enter_tree));
 			node->disconnect(SceneStringNames::get_singleton()->tree_exiting, callable_mp(this, &Area2D::_body_exit_tree));
+
+			if (p_skip_signals) continue;
 
 			if (!E.value.in_tree) {
 				continue;
@@ -370,6 +372,8 @@ void Area2D::_clear_monitoring() {
 
 			node->disconnect(SceneStringNames::get_singleton()->tree_entered, callable_mp(this, &Area2D::_area_enter_tree));
 			node->disconnect(SceneStringNames::get_singleton()->tree_exiting, callable_mp(this, &Area2D::_area_exit_tree));
+
+			if (p_skip_signals) continue;
 
 			if (!E.value.in_tree) {
 				continue;
@@ -644,6 +648,35 @@ void Area2D::_bind_methods() {
 	BIND_ENUM_CONSTANT(SPACE_OVERRIDE_COMBINE_REPLACE);
 	BIND_ENUM_CONSTANT(SPACE_OVERRIDE_REPLACE);
 	BIND_ENUM_CONSTANT(SPACE_OVERRIDE_REPLACE_COMBINE);
+}
+
+// BLOOMmod: savestates
+void Area2D::_area_duplicate_internal_state(Node *p_from, std::function<Node*(ObjectID)> p_map_fn) {
+	Area2D *from = Object::cast_to<Area2D>(p_from);
+	ERR_FAIL_NULL(from);
+	// old signals are copied, but are bound to incorrect ObjectIDs
+	_clear_monitoring(true);
+	// TODO(BLOOMmod): get actual RIDs
+	for (HashMap<ObjectID, BodyState>::Iterator E = from->body_map.begin(); E; ++E) {
+		BodyState state = E->value;
+		state.rid = RID();
+		Node *node = p_map_fn(E->key);
+		ObjectID objid = node->get_instance_id();
+		ERR_CONTINUE(objid.is_null());
+		body_map.insert(objid, state);
+		node->connect(SceneStringNames::get_singleton()->tree_entered, callable_mp(this, &Area2D::_body_enter_tree).bind(objid));
+		node->connect(SceneStringNames::get_singleton()->tree_exiting, callable_mp(this, &Area2D::_body_exit_tree).bind(objid));
+	}
+	for (HashMap<ObjectID, AreaState>::Iterator E = from->area_map.begin(); E; ++E) {
+		AreaState state = E->value;
+		state.rid = RID();
+		Node *node = p_map_fn(E->key);
+		ObjectID objid = node->get_instance_id();
+		ERR_CONTINUE(objid.is_null());
+		area_map.insert(objid, state);
+		node->connect(SceneStringNames::get_singleton()->tree_entered, callable_mp(this, &Area2D::_area_enter_tree).bind(objid));
+		node->connect(SceneStringNames::get_singleton()->tree_exiting, callable_mp(this, &Area2D::_area_exit_tree).bind(objid));
+	}
 }
 
 Area2D::Area2D() :

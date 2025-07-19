@@ -45,6 +45,7 @@
 #include "modules/gdscript/gdscript.h"
 #include "node.h"
 #include "scene/2d/collision_object_2d.h"
+#include "scene/2d/area_2d.h"
 #include "scene/animation/tween.h"
 #include "scene/debugger/scene_debugger.h"
 #include "scene/gui/control.h"
@@ -2168,21 +2169,40 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 	}
 	set_pause(p_from.is_paused());
 	PhysicsServer2D::get_singleton()->space_duplicate_internal_state(root->get_world_2d()->get_space(), [&](ObjectID p_instance_id) -> RID {
+		if (p_instance_id.is_null()) return RID();
 		Node *old_node = Object::cast_to<Node>(ObjectDB::get_instance(p_instance_id));
-		if (!old_node) return RID();
-		if (!root->is_ancestor_of(old_node)) return RID();
-		NodePath path = root->get_path_to(old_node);
-		ERR_FAIL_COND_V(!p_from.root->has_node(path), RID());
-		CollisionObject2D *new_node = Object::cast_to<CollisionObject2D>(p_from.root->get_node(path));
+		ERR_FAIL_COND_V(!old_node, RID());
+		if (p_from.root->is_ancestor_of(old_node)) {
+			NodePath path = p_from.root->get_path_to(old_node);
+			ERR_FAIL_COND_V(!root->has_node(path), RID());
+			CollisionObject2D *new_node = Object::cast_to<CollisionObject2D>(root->get_node(path));
+			ERR_FAIL_NULL_V(new_node, RID());
+			return new_node->get_rid();
+		} else {
+			ERR_FAIL_COND_V(!root->is_ancestor_of(old_node), RID());
+			NodePath path = root->get_path_to(old_node);
+			ERR_FAIL_COND_V(!p_from.root->has_node(path), RID());
+			CollisionObject2D *new_node = Object::cast_to<CollisionObject2D>(p_from.root->get_node(path));
+			ERR_FAIL_NULL_V(new_node, RID());
+			Area2D *area = Object::cast_to<Area2D>(old_node);
+			ERR_FAIL_NULL_V(area, RID());
+			// TODO(BLOOMmod): putting this here is a horrible hack, fix it
+			area->_area_duplicate_internal_state(new_node, [&](ObjectID p_instance_id2) -> Node* {
+				Node *old_node2 = Object::cast_to<Node>(ObjectDB::get_instance(p_instance_id2));
+				ERR_FAIL_COND_V(!old_node2, nullptr);
+				NodePath path2 = p_from.root->get_path_to(old_node2);
+				ERR_FAIL_COND_V(!root->has_node(path2), nullptr);
+				return root->get_node(path2);
+			});
+			return new_node->get_rid();
+		}
 		// TODO(BLOOMmod): handle TileMaps
-		ERR_FAIL_NULL_V(new_node, RID());
-		return new_node->get_rid();
 	});
 	process_groups.push_back(&default_process_group);
 	HashMap<StringName, ProjectSettings::AutoloadInfo> autoloads = ProjectSettings::get_singleton()->get_autoload_list();
 	for (const KeyValue<StringName, ProjectSettings::AutoloadInfo> &E : autoloads) {
 		const ProjectSettings::AutoloadInfo &info = E.value;
-		if (!info.is_singleton) { continue; }
+		if (!info.is_singleton) continue;
 		int idx = GDScriptLanguage::get_singleton()->get_global_map()[info.name];
 		Node *old_node = Object::cast_to<Node>(gdscript_global_array.get(idx));
 		ERR_CONTINUE(!old_node);

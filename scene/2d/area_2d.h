@@ -33,6 +33,7 @@
 
 #include "core/templates/vset.h"
 #include "scene/2d/collision_object_2d.h"
+#include <functional>
 
 class Area2D : public CollisionObject2D {
 	GDCLASS(Area2D, CollisionObject2D);
@@ -127,7 +128,7 @@ private:
 	};
 
 	HashMap<ObjectID, AreaState> area_map;
-	void _clear_monitoring();
+	void _clear_monitoring(bool p_skip_signals=false);
 
 	bool audio_bus_override = false;
 	StringName audio_bus;
@@ -191,6 +192,10 @@ public:
 
 	void set_audio_bus_name(const StringName &p_audio_bus);
 	StringName get_audio_bus_name() const;
+
+	// BLOOMmod: for savestates
+	// BLOOMmod: not to be confused with Node::_duplicate_internal_state()
+	void _area_duplicate_internal_state(Node *p_from, std::function<Node*(ObjectID)> p_map_fn);
 
 	Area2D();
 	~Area2D();

@@ -305,6 +305,7 @@ void GodotArea2D::compute_gravity(const Vector2 &p_position, Vector2 &r_gravity)
 
 // BLOOMmod: required for savestates
 void GodotArea2D::duplicate_internal_state(std::function<GodotCollisionObject2D*(ObjectID)> p_map_fn) {
+	if (get_instance_id().is_null()) return;
 	GodotArea2D *from = dynamic_cast<GodotArea2D*>(p_map_fn(get_instance_id()));
 	ERR_FAIL_NULL(from);
 	for (GodotConstraint2D *constraint : constraints) {
