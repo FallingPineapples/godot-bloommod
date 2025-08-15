@@ -661,6 +661,7 @@ void Area2D::_area_duplicate_internal_state(Node *p_from, std::function<Node*(Ob
 		BodyState state = E->value;
 		state.rid = RID();
 		Node *node = p_map_fn(E->key);
+		ERR_CONTINUE(!node);
 		ObjectID objid = node->get_instance_id();
 		ERR_CONTINUE(objid.is_null());
 		body_map.insert(objid, state);
@@ -671,6 +672,7 @@ void Area2D::_area_duplicate_internal_state(Node *p_from, std::function<Node*(Ob
 		AreaState state = E->value;
 		state.rid = RID();
 		Node *node = p_map_fn(E->key);
+		ERR_CONTINUE(!node);
 		ObjectID objid = node->get_instance_id();
 		ERR_CONTINUE(objid.is_null());
 		area_map.insert(objid, state);
