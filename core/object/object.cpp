@@ -1426,7 +1426,9 @@ bool Object::_disconnect(const StringName &p_signal, const Callable &p_callable,
 	}
 	ERR_FAIL_NULL_V_MSG(s, false, vformat("Disconnecting nonexistent signal '%s' in %s.", p_signal, to_string()));
 
-	ERR_FAIL_COND_V_MSG(!s->slot_map.has(*p_callable.get_base_comparator()), false, "Attempt to disconnect a nonexistent connection from '" + to_string() + "'. Signal: '" + p_signal + "', callable: '" + p_callable + "'.");
+	// BLOOMmod: have to ignore this error, since it causes logspam even in harmless situations
+	// ERR_FAIL_COND_V_MSG(!s->slot_map.has(*p_callable.get_base_comparator()), false, "Attempt to disconnect a nonexistent connection from '" + to_string() + "'. Signal: '" + p_signal + "', callable: '" + p_callable + "'.");
+	if (!s->slot_map.has(*p_callable.get_base_comparator())) return false;
 
 	SignalData::Slot *slot = &s->slot_map[*p_callable.get_base_comparator()];
 
