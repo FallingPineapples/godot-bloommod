@@ -251,10 +251,11 @@ void Area2D::_area_exit_tree(ObjectID p_id) {
 	Node *node = Object::cast_to<Node>(obj);
 	ERR_FAIL_NULL(node);
 	HashMap<ObjectID, AreaState>::Iterator E = area_map.find(p_id);
-	// BLOOMmod: have to ignore this error, since it causes logspam even in harmless situation
+	// BLOOMmod: have to ignore these error, since it causes logspam even in harmless situation
 	// ERR_FAIL_COND(!E);
+	// ERR_FAIL_COND(!E->value.in_tree);
 	if (!E) return;
-	ERR_FAIL_COND(!E->value.in_tree);
+	if (!E->value.in_tree) return;
 	E->value.in_tree = false;
 	emit_signal(SceneStringNames::get_singleton()->area_exited, node);
 	for (int i = 0; i < E->value.shapes.size(); i++) {
