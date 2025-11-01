@@ -155,8 +155,9 @@ void Area2D::_body_exit_tree(ObjectID p_id) {
 	HashMap<ObjectID, BodyState>::Iterator E = body_map.find(p_id);
 	// BLOOMmod: have to ignore this error, since it causes logspam even in harmless situation
 	// ERR_FAIL_COND(!E);
+	// ERR_FAIL_COND(!E->value.in_tree);
 	if (!E) return;
-	ERR_FAIL_COND(!E->value.in_tree);
+	if (!E->value.in_tree) return;
 	E->value.in_tree = false;
 	emit_signal(SceneStringNames::get_singleton()->body_exited, node);
 	for (int i = 0; i < E->value.shapes.size(); i++) {
