@@ -1753,7 +1753,24 @@ bool SceneTree::is_multiplayer_poll_enabled() const {
 
 // BLOOMmod: savestate api
 SceneTree *SceneTree::duplicate() const {
-	return memnew(SceneTree(*this));
+	MessageQueue::get_singleton()->flush();
+
+	SceneTree *ret = memnew(SceneTree(*this));
+
+	MainLoop *prev_main_loop = Engine::get_singleton()->_main_loop;
+	bool prev_in_physics = Engine::get_singleton()->_in_physics;
+
+	Engine::get_singleton()->_main_loop = ret;
+	Engine::get_singleton()->_in_physics = false;
+
+	// Ensures that TileMaps are up-to-date.
+	// TODO(BLOOMmod): is there a better way to do this?
+	MessageQueue::get_singleton()->flush();
+
+	Engine::get_singleton()->_in_physics = prev_in_physics;
+	Engine::get_singleton()->_main_loop = prev_main_loop;
+
+	return ret;
 }
 
 // BLOOMmod: see Main::iteration()
