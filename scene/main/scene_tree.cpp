@@ -1790,10 +1790,12 @@ void SceneTree::frame() {
 	physics_process(1./60);
 	PhysicsServer2D::get_singleton()->end_sync();
 	PhysicsServer2D::get_singleton()->space_step(root->get_world_2d()->get_space(), 1./60);
+	MessageQueue::get_singleton()->flush();
 	get_input_object()->_physics_frames++;
 	Engine::get_singleton()->_in_physics = false;
 
 	process(1./60);
+	MessageQueue::get_singleton()->flush();
 	get_input_object()->_process_frames++;
 
 	Engine::get_singleton()->_in_physics = prev_in_physics;
