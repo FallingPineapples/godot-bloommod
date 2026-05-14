@@ -63,6 +63,9 @@ class ShapeCast2D : public Node2D {
 	Array _get_collision_result() const;
 	void _shape_changed();
 
+	// BLOOMmod: copy collision state
+	virtual void _duplicate_internal_state(Node *p_copy) const override;
+
 protected:
 	void _notification(int p_what);
 	void _update_shapecast_state();

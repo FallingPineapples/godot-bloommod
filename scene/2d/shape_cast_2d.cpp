@@ -196,6 +196,14 @@ void ShapeCast2D::_shape_changed() {
 	queue_redraw();
 }
 
+// BLOOMmod: copy internal collision state
+void ShapeCast2D::_duplicate_internal_state(Node *p_copy) const {
+	ShapeCast2D *shape_cast = Object::cast_to<ShapeCast2D>(p_copy);
+	ERR_FAIL_NULL(shape_cast);
+	shape_cast->collided = collided;
+	// TODO(BLOOMmod): copy the rest of the collision state
+}
+
 void ShapeCast2D::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
