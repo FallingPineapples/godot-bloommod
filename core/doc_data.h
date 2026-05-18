@@ -115,6 +115,7 @@ public:
 		String description;
 		bool is_deprecated = false;
 		bool is_experimental = false;
+		String extension_source;
 		Vector<ArgumentDoc> arguments;
 		Vector<int> errors_returned;
 		bool operator<(const MethodDoc &p_method) const {
@@ -179,6 +180,10 @@ public:
 				doc.is_experimental = p_dict["is_experimental"];
 			}
 
+			if (p_dict.has("extension_source")) {
+				doc.extension_source = p_dict["extension_source"];
+			}
+
 			Array arguments;
 			if (p_dict.has("arguments")) {
 				arguments = p_dict["arguments"];
@@ -225,6 +230,10 @@ public:
 
 			dict["is_experimental"] = p_doc.is_experimental;
 
+			if (!p_doc.extension_source.is_empty()) {
+				dict["extension_source"] = p_doc.extension_source;
+			}
+
 			if (!p_doc.arguments.is_empty()) {
 				Array arguments;
 				for (int i = 0; i < p_doc.arguments.size(); i++) {
@@ -254,6 +263,7 @@ public:
 		String description;
 		bool is_deprecated = false;
 		bool is_experimental = false;
+		String extension_source;
 		bool operator<(const ConstantDoc &p_const) const {
 			return name < p_const.name;
 		}
@@ -291,6 +301,10 @@ public:
 				doc.is_experimental = p_dict["is_experimental"];
 			}
 
+			if (p_dict.has("extension_source")) {
+				doc.extension_source = p_dict["extension_source"];
+			}
+
 			return doc;
 		}
 		static Dictionary to_dict(const ConstantDoc &p_doc) {
@@ -319,6 +333,10 @@ public:
 
 			dict["is_experimental"] = p_doc.is_experimental;
 
+			if (!p_doc.extension_source.is_empty()) {
+				dict["extension_source"] = p_doc.extension_source;
+			}
+
 			return dict;
 		}
 	};
@@ -335,6 +353,7 @@ public:
 		String overrides;
 		bool is_deprecated = false;
 		bool is_experimental = false;
+		String extension_source;
 		bool operator<(const PropertyDoc &p_prop) const {
 			return name.naturalcasecmp_to(p_prop.name) < 0;
 		}
@@ -388,6 +407,10 @@ public:
 				doc.is_experimental = p_dict["is_experimental"];
 			}
 
+			if (p_dict.has("extension_source")) {
+				doc.extension_source = p_dict["extension_source"];
+			}
+
 			return doc;
 		}
 		static Dictionary to_dict(const PropertyDoc &p_doc) {
@@ -432,6 +455,10 @@ public:
 
 			dict["is_experimental"] = p_doc.is_experimental;
 
+			if (!p_doc.extension_source.is_empty()) {
+				dict["extension_source"] = p_doc.extension_source;
+			}
+
 			return dict;
 		}
 	};
@@ -442,6 +469,7 @@ public:
 		String data_type;
 		String description;
 		String default_value;
+		String extension_source;
 		bool operator<(const ThemeItemDoc &p_theme_item) const {
 			// First sort by the data type, then by name.
 			if (data_type == p_theme_item.data_type) {
@@ -472,6 +500,10 @@ public:
 				doc.default_value = p_dict["default_value"];
 			}
 
+			if (p_dict.has("extension_source")) {
+				doc.extension_source = p_dict["extension_source"];
+			}
+
 			return doc;
 		}
 		static Dictionary to_dict(const ThemeItemDoc &p_doc) {
@@ -495,6 +527,10 @@ public:
 
 			if (!p_doc.default_value.is_empty()) {
 				dict["default_value"] = p_doc.default_value;
+			}
+
+			if (!p_doc.extension_source.is_empty()) {
+				dict["extension_source"] = p_doc.extension_source;
 			}
 
 			return dict;
@@ -536,6 +572,7 @@ public:
 		String description;
 		bool is_deprecated = false;
 		bool is_experimental = false;
+		String extension_source;
 		static EnumDoc from_dict(const Dictionary &p_dict) {
 			EnumDoc doc;
 
@@ -551,6 +588,10 @@ public:
 				doc.is_experimental = p_dict["is_experimental"];
 			}
 
+			if (p_dict.has("extension_source")) {
+				doc.extension_source = p_dict["extension_source"];
+			}
+
 			return doc;
 		}
 		static Dictionary to_dict(const EnumDoc &p_doc) {
@@ -563,6 +604,10 @@ public:
 			dict["is_deprecated"] = p_doc.is_deprecated;
 
 			dict["is_experimental"] = p_doc.is_experimental;
+
+			if (!p_doc.extension_source.is_empty()) {
+				dict["extension_source"] = p_doc.extension_source;
+			}
 
 			return dict;
 		}

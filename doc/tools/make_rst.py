@@ -9,6 +9,7 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
+from collections.abc import Iterable
 from typing import List, Dict, TextIO, Tuple, Optional, Any, Union
 
 # Import hardcoded version information from version.py
@@ -177,10 +178,12 @@ class State:
                 if default_value is not None:
                     default_value = f"``{default_value}``"
                 overrides = property.get("overrides") or None
+                extension_source = property.get("extension_source", default="")
 
                 property_def = PropertyDef(
                     property_name, type_name, setter, getter, property.text, default_value, overrides
                 )
+                property_def.extension_source = extension_source
                 class_def.properties[property_name] = property_def
 
         constructors = class_root.find("constructors")
@@ -190,6 +193,7 @@ class State:
 
                 method_name = constructor.attrib["name"]
                 qualifiers = constructor.get("qualifiers")
+                extension_source = constructor.get("extension_source", default="")
 
                 return_element = constructor.find("return")
                 if return_element is not None:
@@ -206,6 +210,7 @@ class State:
 
                 method_def = MethodDef(method_name, return_type, params, method_desc, qualifiers)
                 method_def.definition_name = "constructor"
+                method_def.extension_source = extension_source
                 if method_name not in class_def.constructors:
                     class_def.constructors[method_name] = []
 
@@ -218,6 +223,7 @@ class State:
 
                 method_name = method.attrib["name"]
                 qualifiers = method.get("qualifiers")
+                extension_source = method.get("extension_source", default="")
 
                 return_element = method.find("return")
                 if return_element is not None:
@@ -234,6 +240,7 @@ class State:
                     method_desc = desc_element.text
 
                 method_def = MethodDef(method_name, return_type, params, method_desc, qualifiers)
+                method_def.extension_source = extension_source
                 if method_name not in class_def.methods:
                     class_def.methods[method_name] = []
 
@@ -246,6 +253,7 @@ class State:
 
                 method_name = operator.attrib["name"]
                 qualifiers = operator.get("qualifiers")
+                extension_source = operator.get("extension_source", default="")
 
                 return_element = operator.find("return")
                 if return_element is not None:
@@ -263,6 +271,7 @@ class State:
 
                 method_def = MethodDef(method_name, return_type, params, method_desc, qualifiers)
                 method_def.definition_name = "operator"
+                method_def.extension_source = extension_source
                 if method_name not in class_def.operators:
                     class_def.operators[method_name] = []
 
@@ -277,7 +286,9 @@ class State:
                 value = constant.attrib["value"]
                 enum = constant.get("enum")
                 is_bitfield = constant.get("is_bitfield") == "true"
+                extension_source = constant.get("extension_source", default="")
                 constant_def = ConstantDef(constant_name, value, constant.text, is_bitfield)
+                constant_def.extension_source = extension_source
                 if enum is None:
                     if constant_name in class_def.constants:
                         print_error(f'{class_name}.xml: Duplicate constant "{constant_name}".', self)
@@ -302,6 +313,7 @@ class State:
 
                 annotation_name = annotation.attrib["name"]
                 qualifiers = annotation.get("qualifiers")
+                extension_source = annotation.get("extension_source", default="")
 
                 params = self.parse_params(annotation, "annotation")
 
@@ -311,6 +323,7 @@ class State:
                     annotation_desc = desc_element.text
 
                 annotation_def = AnnotationDef(annotation_name, params, annotation_desc, qualifiers)
+                annotation_def.extension_source = extension_source
                 if annotation_name not in class_def.annotations:
                     class_def.annotations[annotation_name] = []
 
@@ -322,6 +335,7 @@ class State:
                 assert signal.tag == "signal"
 
                 signal_name = signal.attrib["name"]
+                extension_source = signal.get("extension_source", default="")
 
                 if signal_name in class_def.signals:
                     print_error(f'{class_name}.xml: Duplicate signal "{signal_name}".', self)
@@ -335,6 +349,7 @@ class State:
                     signal_desc = desc_element.text
 
                 signal_def = SignalDef(signal_name, params, signal_desc)
+                signal_def.extension_source = extension_source
                 class_def.signals[signal_name] = signal_def
 
         theme_items = class_root.find("theme_items")
@@ -351,6 +366,7 @@ class State:
                         self,
                     )
                     continue
+                extension_source = theme_item.get("extension_source", default="")
 
                 default_value = theme_item.get("default") or None
                 if default_value is not None:
@@ -363,6 +379,7 @@ class State:
                     theme_item.text,
                     default_value,
                 )
+                theme_item_def.extension_source = extension_source
                 class_def.theme_items[theme_item_name] = theme_item_def
 
         tutorials = class_root.find("tutorials")
@@ -437,6 +454,7 @@ class DefinitionBase:
     ) -> None:
         self.definition_name = definition_name
         self.name = name
+        self.extension_source = ""
 
 
 class PropertyDef(DefinitionBase):
@@ -576,6 +594,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("path", nargs="+", help="A path to an XML file or a directory containing XML files to parse.")
     parser.add_argument("--filter", default="", help="The filepath pattern for XML files to filter.")
+    parser.add_argument("--extension-source", default="", help="The extension source to filter to.")
     parser.add_argument("--lang", "-l", default="en", help="Language to use for section headings.")
     parser.add_argument(
         "--color",
@@ -682,8 +701,14 @@ def main() -> None:
     for class_name, class_def in state.classes.items():
         if args.filter and not pattern.search(class_def.filepath):
             continue
+        if not (has_fn_def(args.extension_source, class_def.constructors, class_def.methods,
+                    class_def.operators, class_def.annotations)
+                or has_def(args.extension_source, class_def.constants, class_def.properties,
+                    class_def.signals, class_def.theme_items)
+                or has_enum_def(args.extension_source, class_def.enums)):
+            continue
         state.current_class = class_name
-        make_rst_class(class_def, state, args.dry_run, args.output)
+        make_rst_class(class_def, state, args.dry_run, args.extension_source, args.output)
 
         group_name = get_class_group(class_def, state)
 
@@ -799,10 +824,48 @@ def is_editor_class(class_def: ClassDef) -> bool:
     return False
 
 
+def flatten_defs(*args: List[OrderedDict[str, DefinitionBase]]) -> Iterable[DefinitionBase]:
+    for arg in args:
+        for definition in arg.values():
+            yield definition
+
+
+def flatten_fn_defs(*args: List[OrderedDict[str, List[DefinitionBase]]]) -> Iterable[DefinitionBase]:
+    for arg in args:
+        for val in arg.values():
+            for definition in val:
+                yield definition
+
+
+def flatten_enum_defs(*args: List[OrderedDict[str, EnumDef]]) -> Iterable[DefinitionBase]:
+    for arg in args:
+        for definition in arg.values():
+            for val in definition.values.values():
+                yield val
+
+
+def has_def(extension_source: str, *args: List[OrderedDict[str, DefinitionBase]]) -> bool:
+    return _has_def(extension_source, flatten_defs(*args))
+
+
+def has_fn_def(extension_source: str, *args: List[OrderedDict[str, List[DefinitionBase]]]) -> bool:
+    return _has_def(extension_source, flatten_fn_defs(*args))
+
+
+def has_enum_def(extension_source: str, *args: List[OrderedDict[str, EnumDef]]) -> bool:
+    return _has_def(extension_source, flatten_enum_defs(*args))
+
+
+def _has_def(extension_source: str, defs: Iterable[DefinitionBase]) -> bool:
+    for defn in defs:
+        if defn.extension_source == extension_source:
+            return True
+    return False
+
 # Generator methods.
 
 
-def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir: str) -> None:
+def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, extension_source: str, output_dir: str) -> None:
     class_name = class_def.name
 
     if dry_run:
@@ -827,8 +890,12 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
     f.write(f".. XML source: {source_github_url}.\n\n")
 
     # Document reference id and header.
-    f.write(f".. _class_{class_name}:\n\n")
-    f.write(make_heading(class_name, "=", False))
+    if extension_source:
+        f.write(f".. _class_{class_name}_{extension_source}_extension:\n\n")
+        f.write(make_heading(f'{class_name} ({extension_source} extension)', "=", False))
+    else:
+        f.write(f".. _class_{class_name}:\n\n")
+        f.write(make_heading(class_name, "=", False))
 
     ### INHERITANCE TREE ###
 
@@ -875,23 +942,24 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
 
         f.write(f"{format_text_block(class_def.brief_description.strip(), class_def, state)}\n\n")
 
-    # Class description
-    if class_def.description is not None and class_def.description.strip() != "":
-        has_description = True
+    if class_def.extension_source == extension_source:
+        # Class description
+        if class_def.description is not None and class_def.description.strip() != "":
+            has_description = True
 
-        f.write(".. rst-class:: classref-introduction-group\n\n")
-        f.write(make_heading("Description", "-"))
+            f.write(".. rst-class:: classref-introduction-group\n\n")
+            f.write(make_heading("Description", "-"))
 
-        f.write(f"{format_text_block(class_def.description.strip(), class_def, state)}\n\n")
+            f.write(f"{format_text_block(class_def.description.strip(), class_def, state)}\n\n")
 
-    if not has_description:
-        f.write(".. container:: contribute\n\n\t")
-        f.write(
-            translate(
-                "There is currently no description for this class. Please help us by :ref:`contributing one <doc_updating_the_class_reference>`!"
+        if not has_description:
+            f.write(".. container:: contribute\n\n\t")
+            f.write(
+                translate(
+                    "There is currently no description for this class. Please help us by :ref:`contributing one <doc_updating_the_class_reference>`!"
+                )
+                + "\n\n"
             )
-            + "\n\n"
-        )
 
     if class_def.name in CLASSES_WITH_CSHARP_DIFFERENCES:
         f.write(".. note::\n\n\t")
@@ -903,7 +971,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
         )
 
     # Online tutorials
-    if len(class_def.tutorials) > 0:
+    if len(class_def.tutorials) > 0 and class_def.extension_source == extension_source:
         f.write(".. rst-class:: classref-introduction-group\n\n")
         f.write(make_heading("Tutorials", "-"))
 
@@ -916,12 +984,14 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
     ml: List[Tuple[Optional[str], ...]] = []
 
     # Properties reference table
-    if len(class_def.properties) > 0:
+    if has_def(extension_source, class_def.properties):
         f.write(".. rst-class:: classref-reftable-group\n\n")
         f.write(make_heading("Properties", "-"))
 
         ml = []
         for property_def in class_def.properties.values():
+            if property_def.extension_source != extension_source:
+                continue
             type_rst = property_def.type_name.to_rst(state)
             default = property_def.default_value
             if default is not None and property_def.overrides:
@@ -935,46 +1005,54 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
         format_table(f, ml, True)
 
     # Constructors, Methods, Operators reference tables
-    if len(class_def.constructors) > 0:
+    if has_fn_def(extension_source, class_def.constructors):
         f.write(".. rst-class:: classref-reftable-group\n\n")
         f.write(make_heading("Constructors", "-"))
 
         ml = []
         for method_list in class_def.constructors.values():
             for m in method_list:
+                if m.extension_source != extension_source:
+                    continue
                 ml.append(make_method_signature(class_def, m, "constructor", state))
 
         format_table(f, ml)
 
-    if len(class_def.methods) > 0:
+    if has_fn_def(extension_source, class_def.methods):
         f.write(".. rst-class:: classref-reftable-group\n\n")
         f.write(make_heading("Methods", "-"))
 
         ml = []
         for method_list in class_def.methods.values():
             for m in method_list:
+                if m.extension_source != extension_source:
+                    continue
                 ml.append(make_method_signature(class_def, m, "method", state))
 
         format_table(f, ml)
 
-    if len(class_def.operators) > 0:
+    if has_fn_def(extension_source, class_def.operators):
         f.write(".. rst-class:: classref-reftable-group\n\n")
         f.write(make_heading("Operators", "-"))
 
         ml = []
         for method_list in class_def.operators.values():
             for m in method_list:
+                if m.extension_source != extension_source:
+                    continue
                 ml.append(make_method_signature(class_def, m, "operator", state))
 
         format_table(f, ml)
 
     # Theme properties reference table
-    if len(class_def.theme_items) > 0:
+    if has_def(extension_source, class_def.theme_items):
         f.write(".. rst-class:: classref-reftable-group\n\n")
         f.write(make_heading("Theme Properties", "-"))
 
         ml = []
         for theme_item_def in class_def.theme_items.values():
+            if theme_item_def.extension_source != extension_source:
+                continue
             ref = f":ref:`{theme_item_def.name}<class_{class_name}_theme_{theme_item_def.data_name}_{theme_item_def.name}>`"
             ml.append((theme_item_def.type_name.to_rst(state), ref, theme_item_def.default_value))
 
@@ -983,7 +1061,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
     ### DETAILED DESCRIPTIONS ###
 
     # Signal descriptions
-    if len(class_def.signals) > 0:
+    if has_def(extension_source, class_def.signals):
         f.write(make_separator(True))
         f.write(".. rst-class:: classref-descriptions-group\n\n")
         f.write(make_heading("Signals", "-"))
@@ -991,6 +1069,9 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
         index = 0
 
         for signal in class_def.signals.values():
+            if signal.extension_source != extension_source:
+                continue
+
             if index != 0:
                 f.write(make_separator())
 
@@ -1018,7 +1099,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
             index += 1
 
     # Enumeration descriptions
-    if len(class_def.enums) > 0:
+    if has_enum_def(extension_source, class_def.enums):
         f.write(make_separator(True))
         f.write(".. rst-class:: classref-descriptions-group\n\n")
         f.write(make_heading("Enumerations", "-"))
@@ -1026,20 +1107,32 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
         index = 0
 
         for e in class_def.enums.values():
+            if not has_def(extension_source, e.values):
+                continue
             if index != 0:
                 f.write(make_separator())
 
             # Create enumeration signature and anchor point.
 
-            f.write(f".. _enum_{class_name}_{e.name}:\n\n")
+            if extension_source:
+                f.write(f".. _enum_{class_name}_{e.name}_{extension_source}_extension:\n\n")
+            else:
+                f.write(f".. _enum_{class_name}_{e.name}:\n\n")
             f.write(".. rst-class:: classref-enumeration\n\n")
 
             if e.is_bitfield:
-                f.write(f"flags **{e.name}**:\n\n")
+                f.write("flags")
             else:
-                f.write(f"enum **{e.name}**:\n\n")
+                f.write("enum")
+            if extension_source:
+                f.write(f" **{e.name}**: ({extension_source} extension)\n\n")
+            else:
+                f.write(f" **{e.name}**:\n\n")
 
             for value in e.values.values():
+                if value.extension_source != extension_source:
+                    continue
+
                 # Also create signature and anchor point for each enum constant.
 
                 f.write(f".. _class_{class_name}_constant_{value.name}:\n\n")
@@ -1057,12 +1150,15 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
             index += 1
 
     # Constant descriptions
-    if len(class_def.constants) > 0:
+    if has_def(extension_source, class_def.constants):
         f.write(make_separator(True))
         f.write(".. rst-class:: classref-descriptions-group\n\n")
         f.write(make_heading("Constants", "-"))
 
         for constant in class_def.constants.values():
+            if constant.extension_source != extension_source:
+                continue
+
             # Create constant signature and anchor point.
 
             f.write(f".. _class_{class_name}_constant_{constant.name}:\n\n")
@@ -1078,7 +1174,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
             f.write("\n\n")
 
     # Annotation descriptions
-    if len(class_def.annotations) > 0:
+    if has_def(extension_source, class_def.annotations):
         f.write(make_separator(True))
         f.write(make_heading("Annotations", "-"))
 
@@ -1086,6 +1182,9 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
 
         for method_list in class_def.annotations.values():  # type: ignore
             for i, m in enumerate(method_list):
+                if m.extension_source != extension_source:
+                    continue
+
                 if index != 0:
                     f.write(make_separator())
 
@@ -1115,7 +1214,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
                 index += 1
 
     # Property descriptions
-    if any(not p.overrides for p in class_def.properties.values()) > 0:
+    if any((not p.overrides and p.extension_source == extension_source) for p in class_def.properties.values()):
         f.write(make_separator(True))
         f.write(".. rst-class:: classref-descriptions-group\n\n")
         f.write(make_heading("Property Descriptions", "-"))
@@ -1124,6 +1223,9 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
 
         for property_def in class_def.properties.values():
             if property_def.overrides:
+                continue
+
+            if property_def.extension_source != extension_source:
                 continue
 
             if index != 0:
@@ -1172,7 +1274,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
             index += 1
 
     # Constructor, Method, Operator descriptions
-    if len(class_def.constructors) > 0:
+    if has_fn_def(extension_source, class_def.constructors):
         f.write(make_separator(True))
         f.write(".. rst-class:: classref-descriptions-group\n\n")
         f.write(make_heading("Constructor Descriptions", "-"))
@@ -1181,6 +1283,9 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
 
         for method_list in class_def.constructors.values():
             for i, m in enumerate(method_list):
+                if m.extension_source != extension_source:
+                    continue
+
                 if index != 0:
                     f.write(make_separator())
 
@@ -1209,7 +1314,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
 
                 index += 1
 
-    if len(class_def.methods) > 0:
+    if has_fn_def(extension_source, class_def.methods):
         f.write(make_separator(True))
         f.write(".. rst-class:: classref-descriptions-group\n\n")
         f.write(make_heading("Method Descriptions", "-"))
@@ -1218,6 +1323,9 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
 
         for method_list in class_def.methods.values():
             for i, m in enumerate(method_list):
+                if m.extension_source != extension_source:
+                    continue
+
                 if index != 0:
                     f.write(make_separator())
 
@@ -1250,7 +1358,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
 
                 index += 1
 
-    if len(class_def.operators) > 0:
+    if has_fn_def(extension_source, class_def.operators):
         f.write(make_separator(True))
         f.write(".. rst-class:: classref-descriptions-group\n\n")
         f.write(make_heading("Operator Descriptions", "-"))
@@ -1259,6 +1367,9 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
 
         for method_list in class_def.operators.values():
             for i, m in enumerate(method_list):
+                if m.extension_source != extension_source:
+                    continue
+
                 if index != 0:
                     f.write(make_separator())
 
@@ -1291,7 +1402,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
                 index += 1
 
     # Theme property descriptions
-    if len(class_def.theme_items) > 0:
+    if has_def(extension_source, class_def.theme_items):
         f.write(make_separator(True))
         f.write(".. rst-class:: classref-descriptions-group\n\n")
         f.write(make_heading("Theme Property Descriptions", "-"))
@@ -1299,6 +1410,9 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
         index = 0
 
         for theme_item_def in class_def.theme_items.values():
+            if theme_item_def.extension_source != extension_source:
+                continue
+
             if index != 0:
                 f.write(make_separator())
 
@@ -1564,7 +1678,10 @@ def make_rst_index(grouped_classes: Dict[str, List[str]], dry_run: bool, output_
             f.write("\n")
 
             if group_name in CLASS_GROUPS_BASE:
-                f.write(f"    class_{CLASS_GROUPS_BASE[group_name].lower()}\n")
+                for check_group_name in CLASS_GROUPS:
+                    if group_name in grouped_classes and CLASS_GROUPS_BASE[group_name] in grouped_classes[group_name]:
+                        f.write(f"    class_{CLASS_GROUPS_BASE[group_name].lower()}\n")
+                        break
 
             for class_name in grouped_classes[group_name]:
                 if group_name in CLASS_GROUPS_BASE and CLASS_GROUPS_BASE[group_name].lower() == class_name.lower():

@@ -96,12 +96,12 @@
 				[b]Note:[/b] When creating a [Tween] using this method, the [Tween] will not be tied to the [Node] that called it. It will continue to animate even if the [Node] is freed, but it will automatically finish if there's nothing left to animate. If you want the [Tween] to be automatically killed when the [Node] is freed, use [method Node.create_tween] or [method Tween.bind_node].
 			</description>
 		</method>
-		<method name="duplicate" qualifiers="const">
+		<method name="duplicate" qualifiers="const" extension_source="bloom">
 			<return type="SceneTree" />
 			<description>
 			</description>
 		</method>
-		<method name="frame">
+		<method name="frame" extension_source="bloom">
 			<return type="void" />
 			<description>
 			</description>
@@ -119,7 +119,7 @@
 				Returns the current frame number, i.e. the total frame count since the application started.
 			</description>
 		</method>
-		<method name="get_input_object" qualifiers="const">
+		<method name="get_input_object" qualifiers="const" extension_source="bloom">
 			<return type="Input" />
 			<description>
 			</description>
@@ -231,7 +231,7 @@
 				[b]Note:[/b] No [MultiplayerAPI] must be configured for the subpath containing [param root_path], nested custom multiplayers are not allowed. I.e. if one is configured for [code]"/root/Foo"[/code] setting one for [code]"/root/Foo/Bar"[/code] will cause an error.
 			</description>
 		</method>
-		<method name="setup">
+		<method name="setup" extension_source="bloom">
 			<return type="void" />
 			<param index="0" name="local_game_path" type="String" />
 			<description>

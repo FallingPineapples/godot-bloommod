@@ -139,6 +139,7 @@ void DocTools::merge_from(const DocTools &p_data) {
 				m.description = mf.description;
 				m.is_deprecated = mf.is_deprecated;
 				m.is_experimental = mf.is_experimental;
+				m.extension_source = mf.extension_source;
 				break;
 			}
 		}
@@ -156,6 +157,7 @@ void DocTools::merge_from(const DocTools &p_data) {
 				m.description = mf.description;
 				m.is_deprecated = mf.is_deprecated;
 				m.is_experimental = mf.is_experimental;
+				m.extension_source = mf.extension_source;
 				break;
 			}
 		}
@@ -172,6 +174,7 @@ void DocTools::merge_from(const DocTools &p_data) {
 				m.description = mf.description;
 				m.is_deprecated = mf.is_deprecated;
 				m.is_experimental = mf.is_experimental;
+				m.extension_source = mf.extension_source;
 				break;
 			}
 		}
@@ -188,6 +191,7 @@ void DocTools::merge_from(const DocTools &p_data) {
 				m.description = mf.description;
 				m.is_deprecated = mf.is_deprecated;
 				m.is_experimental = mf.is_experimental;
+				m.extension_source = mf.extension_source;
 				break;
 			}
 		}
@@ -204,6 +208,7 @@ void DocTools::merge_from(const DocTools &p_data) {
 				m.description = mf.description;
 				m.is_deprecated = mf.is_deprecated;
 				m.is_experimental = mf.is_experimental;
+				m.extension_source = mf.extension_source;
 				break;
 			}
 		}
@@ -220,6 +225,7 @@ void DocTools::merge_from(const DocTools &p_data) {
 				p.description = pf.description;
 				p.is_deprecated = pf.is_deprecated;
 				p.is_experimental = pf.is_experimental;
+				p.extension_source = pf.extension_source;
 				break;
 			}
 		}
@@ -234,6 +240,7 @@ void DocTools::merge_from(const DocTools &p_data) {
 				const DocData::ThemeItemDoc &pf = cf.theme_properties[j];
 
 				ti.description = pf.description;
+				ti.extension_source = pf.extension_source;
 				break;
 			}
 		}
@@ -284,6 +291,7 @@ void DocTools::merge_from(const DocTools &p_data) {
 				m.description = mf.description;
 				m.is_deprecated = mf.is_deprecated;
 				m.is_experimental = mf.is_experimental;
+				m.extension_source = mf.extension_source;
 				break;
 			}
 		}
@@ -1058,6 +1066,9 @@ static Error _parse_methods(Ref<XMLParser> &parser, Vector<DocData::MethodDoc> &
 				if (parser->has_attribute("is_experimental")) {
 					method.is_experimental = parser->get_named_attribute_value("is_experimental").to_lower() == "true";
 				}
+				if (parser->has_attribute("extension_source")) {
+					method.extension_source = parser->get_named_attribute_value("extension_source");
+				}
 
 				while (parser->read() == OK) {
 					if (parser->get_node_type() == XMLParser::NODE_ELEMENT) {
@@ -1285,6 +1296,9 @@ Error DocTools::_load(Ref<XMLParser> parser) {
 								if (parser->has_attribute("is_experimental")) {
 									prop2.is_experimental = parser->get_named_attribute_value("is_experimental").to_lower() == "true";
 								}
+								if (parser->has_attribute("extension_source")) {
+									prop2.extension_source = parser->get_named_attribute_value("extension_source");
+								}
 								if (!parser->is_empty()) {
 									parser->read();
 									if (parser->get_node_type() == XMLParser::NODE_TEXT) {
@@ -1315,6 +1329,9 @@ Error DocTools::_load(Ref<XMLParser> parser) {
 								prop2.type = parser->get_named_attribute_value("type");
 								ERR_FAIL_COND_V(!parser->has_attribute("data_type"), ERR_FILE_CORRUPT);
 								prop2.data_type = parser->get_named_attribute_value("data_type");
+								if (parser->has_attribute("extension_source")) {
+									prop2.extension_source = parser->get_named_attribute_value("extension_source");
+								}
 								if (!parser->is_empty()) {
 									parser->read();
 									if (parser->get_node_type() == XMLParser::NODE_TEXT) {
@@ -1354,6 +1371,9 @@ Error DocTools::_load(Ref<XMLParser> parser) {
 								}
 								if (parser->has_attribute("is_experimental")) {
 									constant2.is_experimental = parser->get_named_attribute_value("is_experimental").to_lower() == "true";
+								}
+								if (parser->has_attribute("extension_source")) {
+									constant2.extension_source = parser->get_named_attribute_value("extension_source");
 								}
 								if (!parser->is_empty()) {
 									parser->read();
@@ -1410,6 +1430,9 @@ static void _write_method_doc(Ref<FileAccess> f, const String &p_name, Vector<Do
 			}
 			if (m.is_experimental) {
 				additional_attributes += " is_experimental=\"true\"";
+			}
+			if (!m.extension_source.is_empty()) {
+				additional_attributes += " extension_source=\"" + m.extension_source.xml_escape() + "\"";
 			}
 
 			_write_string(f, 2, "<" + p_name + " name=\"" + m.name.xml_escape() + "\"" + qualifiers + additional_attributes + ">");
@@ -1541,6 +1564,9 @@ Error DocTools::save_classes(const String &p_default_path, const HashMap<String,
 				if (c.properties[i].is_experimental) {
 					additional_attributes += " is_experimental=\"true\"";
 				}
+				if (!c.properties[i].extension_source.is_empty()) {
+					additional_attributes += " extension_source=\"" + c.properties[i].extension_source.xml_escape() + "\"";
+				}
 
 				const DocData::PropertyDoc &p = c.properties[i];
 
@@ -1568,6 +1594,9 @@ Error DocTools::save_classes(const String &p_default_path, const HashMap<String,
 				}
 				if (c.constants[i].is_experimental) {
 					additional_attributes += " is_experimental=\"true\"";
+				}
+				if (!c.constants[i].extension_source.is_empty()) {
+					additional_attributes += " extension_source=\"" + c.constants[i].extension_source.xml_escape() + "\"";
 				}
 
 				if (k.is_value_valid) {
@@ -1603,11 +1632,15 @@ Error DocTools::save_classes(const String &p_default_path, const HashMap<String,
 			for (int i = 0; i < c.theme_properties.size(); i++) {
 				const DocData::ThemeItemDoc &ti = c.theme_properties[i];
 
+				String additional_attributes;
 				if (!ti.default_value.is_empty()) {
-					_write_string(f, 2, "<theme_item name=\"" + ti.name + "\" data_type=\"" + ti.data_type + "\" type=\"" + ti.type + "\" default=\"" + ti.default_value.xml_escape(true) + "\">");
-				} else {
-					_write_string(f, 2, "<theme_item name=\"" + ti.name + "\" data_type=\"" + ti.data_type + "\" type=\"" + ti.type + "\">");
+					additional_attributes += " default=\"" + ti.default_value.xml_escape(true) + "\"";
 				}
+				if (!ti.extension_source.is_empty()) {
+					additional_attributes += " extension_source=\"" + ti.extension_source.xml_escape() + "\"";
+				}
+
+				_write_string(f, 2, "<theme_item name=\"" + ti.name + "\" data_type=\"" + ti.data_type + "\" type=\"" + ti.type + "\"" + additional_attributes + ">");
 
 				_write_string(f, 3, _translate_doc_string(ti.description).strip_edges().xml_escape());
 

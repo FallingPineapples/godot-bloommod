@@ -1894,7 +1894,6 @@ void SceneTree::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_multiplayer_poll_enabled"), &SceneTree::is_multiplayer_poll_enabled);
 
 	// BLOOMmod: savestate api bindings
-	// TODO(BLOOMmod): if moved to C++, remove
 	ClassDB::bind_method(D_METHOD("duplicate"), &SceneTree::duplicate);
 	ClassDB::bind_method(D_METHOD("frame"), &SceneTree::frame);
 
