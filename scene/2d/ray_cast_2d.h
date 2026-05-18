@@ -58,6 +58,9 @@ class RayCast2D : public Node2D {
 
 	void _draw_debug_shape();
 
+	// BLOOMmod: copy collision state
+	virtual void _duplicate_internal_state(Node *p_copy) const override;
+
 protected:
 	void _notification(int p_what);
 	void _update_raycast_state();

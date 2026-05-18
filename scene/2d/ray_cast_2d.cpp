@@ -137,6 +137,14 @@ bool RayCast2D::get_exclude_parent_body() const {
 	return exclude_parent_body;
 }
 
+// BLOOMmod: copy internal collision state
+void RayCast2D::_duplicate_internal_state(Node *p_copy) const {
+	RayCast2D *ray_cast = Object::cast_to<RayCast2D>(p_copy);
+	ERR_FAIL_NULL(ray_cast);
+	ray_cast->collided = collided;
+	// TODO(BLOOMmod): copy the rest of the collision state
+}
+
 void RayCast2D::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
