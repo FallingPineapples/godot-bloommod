@@ -1523,7 +1523,7 @@ bool SceneTree::_setup(const String &p_local_game_path, bool p_real_globals) {
 			if (script_res.is_valid()) {
 				StringName ibt = script_res->get_instance_base_type();
 				bool valid_type = ClassDB::is_parent_class(ibt, "Node");
-				ERR_CONTINUE_MSG(!valid_type, vformat("Failed to instantiate an autoload, script '%s' does not inherit from 'Node'.", info.path));
+				if (!valid_type) continue;
 
 				Object *obj = ClassDB::instantiate(ibt);
 				ERR_CONTINUE_MSG(!obj, vformat("Failed to instantiate an autoload, cannot instantiate '%s'.", ibt));
@@ -2223,7 +2223,7 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 		if (!info.is_singleton) continue;
 		int idx = GDScriptLanguage::get_singleton()->get_global_map()[info.name];
 		Node *old_node = Object::cast_to<Node>(gdscript_global_array.get(idx));
-		ERR_CONTINUE(!old_node);
+		if (!old_node) continue;
 		ERR_CONTINUE(!p_from.root->is_ancestor_of(old_node));
 		NodePath path = p_from.root->get_path_to(old_node);
 		ERR_CONTINUE(!root->has_node(path));
