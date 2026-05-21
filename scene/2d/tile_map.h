@@ -328,6 +328,7 @@ private:
 #endif // DEBUG_ENABLED
 
 	HashMap<RID, Vector2i> bodies_coords; // Mapping for RID to coords.
+	HashMap<Vector2i, RID> coords_bodies; // BLOOMmod: Mapping coords to RID, for savestates
 	bool _physics_was_cleaned_up = false;
 	void _physics_update();
 	void _physics_notify_tilemap_change(DirtyFlags p_what);
@@ -430,6 +431,10 @@ public:
 	// Find coords for body.
 	bool has_body_rid(RID p_physics_body) const;
 	Vector2i get_coords_for_body_rid(RID p_physics_body) const; // For finding tiles from collision.
+
+	// BLOOMmod: for translating RIDs through savestates
+	bool coords_has_body(Vector2i p_coords) const;
+	RID get_body_rid_for_coords(Vector2i p_coords) const;
 
 	~TileMapLayer();
 };
@@ -604,6 +609,8 @@ public:
 	Vector2i get_coords_for_body_rid(RID p_physics_body);
 	// For getting their layers as well.
 	int get_layer_for_body_rid(RID p_physics_body);
+	// BLOOMmod: extracting internal RIDs from tiles, for savestates
+	RID get_body_rid_for_coords(int p_layer, Vector2i p_coords);
 
 	// Fixing and clearing methods.
 	void fix_invalid_tiles();

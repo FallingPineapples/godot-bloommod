@@ -770,6 +770,9 @@ void TileMapLayer::_physics_clear_cell(CellData &r_cell_data) {
 	// Clear bodies.
 	for (RID body : r_cell_data.bodies) {
 		if (body.is_valid()) {
+			if (likely(coords_bodies[bodies_coords[body]] == body)) {
+				coords_bodies.erase(bodies_coords[body]);
+			}
 			bodies_coords.erase(body);
 			ps->free(body);
 		}
@@ -804,6 +807,9 @@ void TileMapLayer::_physics_update_cell(CellData &r_cell_data) {
 				for (uint32_t i = tile_set->get_physics_layers_count(); i < r_cell_data.bodies.size(); i++) {
 					RID body = r_cell_data.bodies[i];
 					if (body.is_valid()) {
+						if (likely(coords_bodies[bodies_coords[body]] == body)) {
+							coords_bodies.erase(bodies_coords[body]);
+						}
 						bodies_coords.erase(body);
 						ps->free(body);
 					}
@@ -819,6 +825,9 @@ void TileMapLayer::_physics_update_cell(CellData &r_cell_data) {
 					if (tile_data->get_collision_polygons_count(tile_set_physics_layer) == 0) {
 						// No body needed, free it if it exists.
 						if (body.is_valid()) {
+							if (likely(coords_bodies[bodies_coords[body]] == body)) {
+								coords_bodies.erase(bodies_coords[body]);
+							}
 							bodies_coords.erase(body);
 							ps->free(body);
 						}
@@ -829,6 +838,9 @@ void TileMapLayer::_physics_update_cell(CellData &r_cell_data) {
 							body = ps->body_create();
 						}
 						bodies_coords[body] = r_cell_data.coords;
+						// BLOOMmod: Assumes every tile uses only one physics layer
+						// TODO(BLOOMmod): set this up to also key on physics layer
+						coords_bodies[r_cell_data.coords] = body;
 						ps->body_set_mode(body, tile_map_node->is_collision_animatable() ? PhysicsServer2D::BODY_MODE_KINEMATIC : PhysicsServer2D::BODY_MODE_STATIC);
 						ps->body_set_space(body, space);
 
@@ -2539,6 +2551,15 @@ Vector2i TileMapLayer::get_coords_for_body_rid(RID p_physics_body) const {
 	return bodies_coords[p_physics_body];
 }
 
+bool TileMapLayer::coords_has_body(Vector2i p_coords) const {
+	return coords_bodies.has(p_coords);
+}
+
+// BLOOMmod: for translating RIDs through savestates
+RID TileMapLayer::get_body_rid_for_coords(Vector2i p_coords) const {
+	return coords_bodies[p_coords];
+}
+
 TileMapLayer::~TileMapLayer() {
 	if (!tile_map_node) {
 		// Temporary layer.
@@ -3555,6 +3576,15 @@ int TileMap::get_layer_for_body_rid(RID p_physics_body) {
 		}
 	}
 	ERR_FAIL_V_MSG(-1, vformat("No tiles for the given body RID %d.", p_physics_body.get_id()));
+}
+
+// BLOOMmod: extract internal RID from tile, for savestates
+RID TileMap::get_body_rid_for_coords(int p_layer, Vector2i p_coords) {
+	ERR_FAIL_INDEX_V(p_layer, (int)layers.size(), RID());
+	if (layers[p_layer]->coords_has_body(p_coords)) {
+		return layers[p_layer]->get_body_rid_for_coords(p_coords);
+	}
+	ERR_FAIL_V_MSG(RID(), vformat("No body for the given coords %s on layer %d.", p_coords, p_layer));
 }
 
 void TileMap::fix_invalid_tiles() {
@@ -4800,6 +4830,7 @@ void TileMap::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_coords_for_body_rid", "body"), &TileMap::get_coords_for_body_rid);
 	ClassDB::bind_method(D_METHOD("get_layer_for_body_rid", "body"), &TileMap::get_layer_for_body_rid);
+	ClassDB::bind_method(D_METHOD("get_body_rid_for_coords", "layer", "coords"), &TileMap::get_body_rid_for_coords);
 
 	ClassDB::bind_method(D_METHOD("get_pattern", "layer", "coords_array"), &TileMap::get_pattern);
 	ClassDB::bind_method(D_METHOD("map_pattern", "position_in_tilemap", "coords_in_pattern", "pattern"), &TileMap::map_pattern);

@@ -154,7 +154,7 @@ public:
 	void compute_gravity(const Vector2 &p_position, Vector2 &r_gravity) const;
 
 	// BLOOMmod: for savestates
-	void duplicate_internal_state(std::function<GodotCollisionObject2D*(ObjectID)> p_map_fn);
+	void duplicate_internal_state(std::function<GodotCollisionObject2D*(ObjectID, RID)> p_map_fn);
 
 	GodotArea2D();
 	~GodotArea2D();

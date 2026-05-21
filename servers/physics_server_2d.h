@@ -288,7 +288,7 @@ public:
 	};
 
 	// BLOOMmod: savestate control
-	virtual void space_duplicate_internal_state(RID p_space, std::function<RID(ObjectID)> p_map_fn) {
+	virtual void space_duplicate_internal_state(RID p_space, std::function<RID(ObjectID, RID)> p_map_fn) {
 		ERR_PRINT("not implemented");
 	};
 

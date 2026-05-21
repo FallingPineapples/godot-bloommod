@@ -44,8 +44,9 @@
 #include "core/string/print_string.h"
 #include "modules/gdscript/gdscript.h"
 #include "node.h"
-#include "scene/2d/collision_object_2d.h"
 #include "scene/2d/area_2d.h"
+#include "scene/2d/collision_object_2d.h"
+#include "scene/2d/tile_map.h"
 #include "scene/animation/tween.h"
 #include "scene/debugger/scene_debugger.h"
 #include "scene/gui/control.h"
@@ -2171,6 +2172,7 @@ SceneTree::~SceneTree() {
 
 // BLOOMmod: savestate core!
 SceneTree::SceneTree(const SceneTree &p_from) {
+	MessageQueue::get_singleton()->flush();
 	ERR_FAIL_NULL(p_from.root);
 	if (unlikely(p_from.gdscript_global_array.size() == 0)) {
 		gdscript_global_array = GDScriptLanguage::get_singleton()->get_global_array_vector();
@@ -2186,7 +2188,8 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 		current_scene = root->get_node(p_from.current_scene->get_path());
 	}
 	set_pause(p_from.is_paused());
-	PhysicsServer2D::get_singleton()->space_duplicate_internal_state(root->get_world_2d()->get_space(), [&](ObjectID p_instance_id) -> RID {
+	MessageQueue::get_singleton()->flush(); // BLOOMmod: Ensures that TileMaps create bodies now.
+	PhysicsServer2D::get_singleton()->space_duplicate_internal_state(root->get_world_2d()->get_space(), [&](ObjectID p_instance_id, RID p_rid) -> RID {
 		if (p_instance_id.is_null()) return RID();
 		Node *old_node = Object::cast_to<Node>(ObjectDB::get_instance(p_instance_id));
 		ERR_FAIL_COND_V(!old_node, RID());
@@ -2194,8 +2197,16 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 			NodePath path = p_from.root->get_path_to(old_node);
 			ERR_FAIL_COND_V(!root->has_node(path), RID());
 			CollisionObject2D *new_node = Object::cast_to<CollisionObject2D>(root->get_node(path));
-			ERR_FAIL_NULL_V(new_node, RID());
-			return new_node->get_rid();
+			if (new_node) {
+				return new_node->get_rid();
+			}
+			TileMap *new_tile_map = Object::cast_to<TileMap>(root->get_node(path));
+			ERR_FAIL_NULL_V(new_tile_map, RID());
+			TileMap *old_tile_map = Object::cast_to<TileMap>(old_node);
+			ERR_FAIL_NULL_V(old_tile_map, RID());
+			Vector2i tile_coords = old_tile_map->get_coords_for_body_rid(p_rid);
+			int tile_layer = old_tile_map->get_layer_for_body_rid(p_rid);
+			return new_tile_map->get_body_rid_for_coords(tile_layer, tile_coords);
 		} else {
 			ERR_FAIL_COND_V(!root->is_ancestor_of(old_node), RID());
 			NodePath path = root->get_path_to(old_node);
@@ -2214,7 +2225,6 @@ SceneTree::SceneTree(const SceneTree &p_from) {
 			});
 			return new_node->get_rid();
 		}
-		// TODO(BLOOMmod): handle TileMaps
 	});
 	process_groups.push_back(&default_process_group);
 	HashMap<StringName, ProjectSettings::AutoloadInfo> autoloads = ProjectSettings::get_singleton()->get_autoload_list();

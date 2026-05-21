@@ -83,6 +83,13 @@
 				[i]Deprecated.[/i] See [method notify_runtime_tile_data_update] and [method update_internals].
 			</description>
 		</method>
+		<method name="get_body_rid_for_coords" extension_source="bloom">
+			<return type="RID" />
+			<param index="0" name="layer" type="int" />
+			<param index="1" name="coords" type="Vector2i" />
+			<description>
+			</description>
+		</method>
 		<method name="get_cell_alternative_tile" qualifiers="const">
 			<return type="int" />
 			<param index="0" name="layer" type="int" />
