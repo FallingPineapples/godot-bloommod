@@ -99,11 +99,14 @@
 		<method name="duplicate" qualifiers="const" extension_source="bloom">
 			<return type="SceneTree" />
 			<description>
+				Creates and returns a copy of this [SceneTree].
+				This does a deep copy of [Node]s in this tree, using [method Node.duplicate] with [constant Node.DUPLICATE_INTERNAL_STATE]. [Resource]s are not copied.
 			</description>
 		</method>
 		<method name="frame" extension_source="bloom">
 			<return type="void" />
 			<description>
+				Advances this [SceneTree] by one frame.
 			</description>
 		</method>
 		<method name="get_first_node_in_group">
@@ -122,6 +125,7 @@
 		<method name="get_input_object" qualifiers="const" extension_source="bloom">
 			<return type="Input" />
 			<description>
+				Returns the [Input] object used by scripts in this [SceneTree]. Input events can be passed into this [SceneTree] using [method Input.parse_input_event].
 			</description>
 		</method>
 		<method name="get_multiplayer" qualifiers="const">
@@ -235,6 +239,8 @@
 			<return type="void" />
 			<param index="0" name="local_game_path" type="String" />
 			<description>
+				Initializes this [SceneTree] (which must have just been created by [code]SceneTree.new()[/code]) into a state ready to be used.
+				The main scene will be loaded from [param local_game_path] (typically [member ProjectSettings.application/run/main_scene]).
 			</description>
 		</method>
 		<method name="unload_current_scene">

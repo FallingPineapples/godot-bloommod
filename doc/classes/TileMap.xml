@@ -88,6 +88,7 @@
 			<param index="0" name="layer" type="int" />
 			<param index="1" name="coords" type="Vector2i" />
 			<description>
+				Returns a body [RID] associated with the given cell.
 			</description>
 		</method>
 		<method name="get_cell_alternative_tile" qualifiers="const">

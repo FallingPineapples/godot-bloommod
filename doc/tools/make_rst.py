@@ -892,7 +892,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, extension_s
     # Document reference id and header.
     if extension_source:
         f.write(f".. _class_{class_name}_{extension_source}_extension:\n\n")
-        f.write(make_heading(f'{class_name} ({extension_source} extension)', "=", False))
+        f.write(make_heading(f'{make_type(class_name, state)} ({extension_source} extension)', "=", False))
     else:
         f.write(f".. _class_{class_name}:\n\n")
         f.write(make_heading(class_name, "=", False))
@@ -1125,7 +1125,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, extension_s
             else:
                 f.write("enum")
             if extension_source:
-                f.write(f" **{e.name}**: ({extension_source} extension)\n\n")
+                f.write(f" {make_enum(e.name, False, state)}: ({extension_source} extension)\n\n")
             else:
                 f.write(f" **{e.name}**:\n\n")
 
@@ -1678,8 +1678,8 @@ def make_rst_index(grouped_classes: Dict[str, List[str]], dry_run: bool, output_
             f.write("\n")
 
             if group_name in CLASS_GROUPS_BASE:
-                for check_group_name in CLASS_GROUPS:
-                    if group_name in grouped_classes and CLASS_GROUPS_BASE[group_name] in grouped_classes[group_name]:
+                for check_name in CLASS_GROUPS:
+                    if check_name in grouped_classes and CLASS_GROUPS_BASE[group_name] in grouped_classes[check_name]:
                         f.write(f"    class_{CLASS_GROUPS_BASE[group_name].lower()}\n")
                         break
 

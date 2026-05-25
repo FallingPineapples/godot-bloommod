@@ -1166,6 +1166,8 @@
 			An instance stays linked to the original so when the original changes, the instance changes too.
 		</constant>
 		<constant name="DUPLICATE_INTERNAL_STATE" value="16" enum="DuplicateFlags" extension_source="bloom">
+			Duplicate internal state.
+			This includes e.g. script properties that have not been exported and various internal state of built-in nodes.
 		</constant>
 		<constant name="INTERNAL_MODE_DISABLED" value="0" enum="InternalMode">
 			Node will not be internal.
